@@ -1,0 +1,22 @@
+.App {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  color: #000;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: white;
+  color: white;
+}
+
+.logo {
+  height: 50px;
+}
+
+main {
+  padding: 20px;
+}
