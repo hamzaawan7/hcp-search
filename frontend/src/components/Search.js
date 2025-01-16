@@ -1,92 +1,80 @@
 import React, { useState } from "react";
 import axios from "axios";
 import Results from "./Results";
-import "./Search.css"; // Import the CSS file
+import "../components/Search.css";
 
 const Search = () => {
-    const [searchTerm, setSearchTerm] = useState(""); // Search input value
-    const [results, setResults] = useState([]); // API results
-    const [type, setType] = useState(""); // Result type (exact, suggested, etc.)
-    const [searchType, setSearchType] = useState("direct"); // Default search type
-    const [city, setCity] = useState("All");
+    const [searchType, setSearchType] = useState("direct");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [country, setCountry] = useState("All");
+    const [results, setResults] = useState([]);
+    const [type, setType] = useState("");
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: 0,
+        pageSize: 10, // Ensure pageSize is always defined
+    });
 
-
-    // Handle Direct Search
-    const handleDirectSearch = async () => {
-        if (!searchTerm) {
-            alert("Please enter a search term!");
+    const handleSearch = async (page = 1, limit = pagination.pageSize || 10) => {
+        if (!searchTerm.trim()) {
+            alert("Please enter a valid search term!");
             return;
         }
 
         try {
-            const response = await axios.get("http://localhost:5000/search/direct", {
-                params: { term: searchTerm, city: city },
-            });
+            let response;
 
-            setResults(response.data.results);
-            setType(response.data.type);
+            if (searchType === "direct") {
+                response = await axios.get("http://localhost:5000/search/direct", {
+                    params: { term: searchTerm, country, page, limit },
+                });
+            } else if (searchType === "smart") {
+                response = await axios.get("http://localhost:5000/search/smart", {
+                    params: { term: searchTerm, country, page, limit },
+                });
+
+                setResults({
+                    exact: response.data.type === "exact" ? response.data.results : [],
+                    suggested: response.data.type === "suggested" ? response.data.results : [],
+                });
+                setType("smart");
+                setPagination(
+                    response.data.pagination || {
+                        currentPage: page,
+                        totalPages: 1,
+                        totalRecords: 0,
+                        pageSize: limit,
+                    }
+                );
+                return;
+            } else if (searchType === "multiple") {
+                response = await axios.get("http://localhost:5000/search/multiple", {
+                    params: { term: searchTerm, country, page, limit },
+                });
+            }
+
+            if (response) {
+                setResults(response.data.results || []);
+                setType(response.data.type);
+                setPagination(
+                    response.data.pagination || {
+                        currentPage: page,
+                        totalPages: 1,
+                        totalRecords: 0,
+                        pageSize: limit,
+                    }
+                );
+            }
         } catch (err) {
-            console.error("Error fetching direct search results:", err);
-            alert("An error occurred while performing direct search. Please try again.");
+            console.error(`Error fetching ${searchType} search results:`, err);
+            alert(`An error occurred while performing the ${searchType} search.`);
         }
     };
 
-    // Handle Multiple Search
-    const handleMultipleSearch = async () => {
-        if (!searchTerm) {
-            alert("Please enter a search term!");
-            return;
-        }
-
-        try {
-            const response = await axios.get("http://localhost:5000/search/multiple", {
-                params: { term: searchTerm, city: city },
-            });
-
-            setResults(response.data.results);
-            setType(response.data.type);
-        } catch (err) {
-            console.error("Error fetching multiple search results:", err);
-            alert("An error occurred while performing multiple search. Please try again.");
-        }
-    };
-
-    // Handle Smart Search
-    const handleSmartSearch = async () => {
-        if (!searchTerm) {
-            alert("Please enter a search term!");
-            return;
-        }
-
-        try {
-            const response = await axios.get("http://localhost:5000/search/smart", {
-                params: { term: searchTerm, city: city },
-            });
-
-            console.log("Smart Search Response:", response.data);
-
-            // Update results state with exact and suggested arrays
-            setResults({
-                exact: response.data.type === "exact" ? response.data.results : [],
-                suggested: response.data.type === "suggested" ? response.data.results : [],
-            });
-            setType("smart");
-        } catch (err) {
-            console.error("Error fetching smart search results:", err);
-            alert("An error occurred while performing smart search. Please try again.");
-        }
-    };
-
-    // Execute the appropriate search function based on the selected search type
-    const handleSearch = () => {
-        if (searchType === "direct") {
-            handleDirectSearch();
-        } else if (searchType === "multiple") {
-            handleMultipleSearch();
-        } else if (searchType === "smart") {
-            handleSmartSearch();
-        } else {
-            alert("Invalid search type selected.");
+    const handlePageChange = (newPage) => {
+        if (newPage > 0 && newPage <= pagination.totalPages) {
+            handleSearch(newPage, pagination.pageSize);
         }
     };
 
@@ -113,19 +101,14 @@ const Search = () => {
                 </button>
             </div>
 
-            {/* Search Input and Button */}
             <div className="search-inputs">
                 <input
                     type="text"
-                    className="search-input"
                     placeholder="Enter search term"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <select
-                    onChange={(e) => setCity(e.target.value)}
-                    className="city-select"
-                >
+                <select value={country} onChange={(e) => setCountry(e.target.value)}>
                     <option value="All">All</option>
                     <option value="United States">United States</option>
                     <option value="Portugal">Portugal</option>
@@ -133,16 +116,18 @@ const Search = () => {
                     <option value="France">France</option>
                     <option value="Belgium">Belgium</option>
                     <option value="Netherlands">Netherlands</option>
+                    <option value="US">US (Abbreviation)</option>
                 </select>
-                <button className="search-button" onClick={handleSearch}>
-                    Search
-                </button>
+                <button onClick={() => handleSearch(1)}>Search</button>
             </div>
 
-            {/* Display Results */}
-            <div className="results-section">
-                <Results type={type} results={results} searchTerm={searchTerm} />
-            </div>
+            <Results
+                type={type}
+                results={results}
+                searchTerm={searchTerm}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+            />
         </div>
     );
 };

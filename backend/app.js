@@ -11,10 +11,10 @@ app.use(
 
 // SQL Server configuration
 var config = {
-    "user": "root", // Database username
-    "password": "m.h_mughal14", // Database password
-    "server": "localhost", // Server IP address
-    "database": "hcp_search", // Database name
+    "user": "VH", // Database username
+    "password": "VectorHealth@123", // Database password
+    "server": "vectorhealth.crrixukeivct.us-east-2.rds.amazonaws.com", // Server IP address
+    "database": "vector_health", // Database name
     "options": {
         "encrypt": false // Disable encryption
     }
@@ -31,7 +31,8 @@ sql.connect(config, err => {
 // Define route for fetching data from SQL Server
 app.get("/", (req, res) => {
     // Execute a SELECT query
-    new sql.Request().query("SELECT * FROM Users", (err, result) => {
+    new sql.Request().query("SELECT TOP(10) * FROM hcp_search_20250106", (err, result) => {
+        console.log("Query executed successfully");
         if (err) {
             console.error("Error executing query:", err);
         } else {
@@ -43,7 +44,9 @@ app.get("/", (req, res) => {
 
 app.get("/search/direct", async (req, res) => {
     const searchTerm = req.query.term;
-    const city = req.query.city;
+    const practice_city = req.query.city;
+    const page = parseInt(req.query.page, 10) || 1; // Default to page 1 if not specified
+    const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 results per page
 
     if (!searchTerm) {
         return res.status(400).send({ error: "Search term is required." });
@@ -52,31 +55,66 @@ app.get("/search/direct", async (req, res) => {
     try {
         const request = new sql.Request();
 
-        // Add the basic query
-        let query = `
-            SELECT * 
-            FROM Users 
-            WHERE (firstname = @searchTerm
-                OR lastname = @searchTerm
-                OR address = @searchTerm
-                OR city = @searchTerm)
+        // Calculate the starting row for pagination
+        const offset = (page - 1) * limit;
+
+        // Base query with pagination
+        const baseQuery = `
+            FROM hcp_search_20250106
+            WHERE (HCP_first_name = @searchTerm
+                OR HCP_last_name = @searchTerm
+                OR practice_address = @searchTerm)
         `;
 
-        // If a specific city is selected, add a city filter
-        if (city && city !== "All") {
-            query += ` AND city = @city`;
-            request.input("city", sql.NVarChar, city);
+        // Add `practice_city` filter if provided
+        if (practice_city && practice_city !== "All") {
+            baseQuery += ` AND practice_city = @practice_city`;
         }
 
-        // Add search term parameter
+        // Query for retrieving paginated results
+        const query = `
+            SELECT *
+            FROM (
+                SELECT ROW_NUMBER() OVER (ORDER BY HCP_last_name) AS row_num, *
+                ${baseQuery}
+            ) AS paginated
+            WHERE row_num BETWEEN @offset + 1 AND @offset + @limit
+        `;
+
+        // Query for total count
+        const countQuery = `
+            SELECT COUNT(*) AS total
+            ${baseQuery}
+        `;
+
+        // Add parameters
         request.input("searchTerm", sql.NVarChar, searchTerm);
+        request.input("offset", sql.Int, offset);
+        request.input("limit", sql.Int, limit);
 
-        // Execute the query
-        const result = await request.query(query);
+        if (practice_city && practice_city !== "All") {
+            request.input("practice_city", sql.NVarChar, practice_city);
+        }
 
+        // Execute both queries
+        const [result, countResult] = await Promise.all([
+            request.query(query),
+            request.query(countQuery),
+        ]);
+
+        const totalRecords = countResult.recordset[0].total;
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        // Send response
         res.json({
             type: "results",
             results: result.recordset,
+            pagination: {
+                totalRecords,
+                totalPages,
+                currentPage: page,
+                pageSize: limit,
+            },
         });
     } catch (err) {
         console.error("Error executing direct search query:", err);
@@ -88,42 +126,60 @@ app.get("/search/direct", async (req, res) => {
 
 
 
+
+
 app.get("/search/multiple", async (req, res) => {
     const searchTerm = req.query.term;
-    const city = req.query.city;
+    const practiceCity = req.query.city;
 
+    // Validate the search term
     if (!searchTerm) {
         return res.status(400).send({ error: "Search term is required." });
     }
 
     try {
-        const request = new sql.Request();
-
         // Parse the search term into multiple IDs
-        const ids = searchTerm
+        const NPIs = searchTerm
             .split(",")
-            .map((id) => id.trim())
-            .filter((id) => !isNaN(id));
+            .map((NPI) => NPI.trim()) // Trim whitespace
+            .filter((NPI) => /^\d+$/.test(NPI)); // Keep only numeric IDs (regex validation)
 
-        if (ids.length === 0) {
-            return res.status(400).send({ error: "Invalid IDs provided for multiple search." });
+        // If no valid NPIs, return an error
+        if (NPIs.length === 0) {
+            return res
+                .status(400)
+                .send({ error: "Invalid or no valid IDs provided for multiple search." });
         }
 
-        // Construct the base query
+        // Start building the query
         let query = `
             SELECT * 
-            FROM Users 
-            WHERE ID IN (${ids.join(",")})
+            FROM hcp_search_20250106
+            WHERE NPI IN (${NPIs.map((_, index) => `@NPI${index}`).join(",")})
         `;
 
-        // Add city filter if specified
-        if (city && city !== "All") {
-            query += ` AND city = @city`;
-            request.input("city", sql.NVarChar, city);
+        // Add city filter if provided
+        if (practiceCity && practiceCity !== "All") {
+            query += ` AND practice_city = @practiceCity`;
         }
 
+        // Create a SQL request
+        const request = new sql.Request();
+
+        // Add parameters for each NPI
+        NPIs.forEach((NPI, index) => {
+            request.input(`NPI${index}`, sql.Int, parseInt(NPI, 10));
+        });
+
+        // Add the city parameter if specified
+        if (practiceCity && practiceCity !== "All") {
+            request.input("practiceCity", sql.NVarChar, practiceCity);
+        }
+
+        // Execute the query
         const result = await request.query(query);
 
+        // Return the results
         res.json({
             type: "results",
             results: result.recordset,
@@ -135,9 +191,11 @@ app.get("/search/multiple", async (req, res) => {
 });
 
 
+
+
 app.get("/search/smart", async (req, res) => {
     const searchTerm = req.query.term;
-    const city = req.query.city;
+    const city = req.query.city || "All"; // Default to "All" if not specified
 
     if (!searchTerm) {
         return res.status(400).send({ error: "Search term is required." });
@@ -149,64 +207,54 @@ app.get("/search/smart", async (req, res) => {
         // Split the search term into individual words
         const terms = searchTerm.split(",").map((term) => term.trim());
 
-        // Construct the exact match query
-        let exactQuery = `
-            SELECT * 
-            FROM Users 
-            WHERE (${terms
-                .map(
-                    (term, index) =>
-                        `(firstname = @term${index} OR lastname = @term${index} OR address = @term${index} OR city = @term${index})`
-                )
-                .join(" OR ")})
-        `;
+        // Base condition for exact match query
+        const exactCondition = terms
+            .map(
+                (term, index) =>
+                    `(HCP_first_name = @term${index} OR HCP_last_name = @term${index} OR practice_city = @term${index})`
+            )
+            .join(" OR ");
 
-        // Construct the suggested match query
-        let suggestedQuery = `
-            SELECT * 
-            FROM Users 
-            WHERE (${terms
-                .map(
-                    (term, index) =>
-                        `(firstname LIKE '%' + @term${index} + '%' OR lastname LIKE '%' + @term${index} + '%' OR address LIKE '%' + @term${index} + '%' OR city LIKE '%' + @term${index} + '%')`
-                )
-                .join(" OR ")})
-              AND NOT (${terms
-                  .map(
-                      (term, index) =>
-                          `(firstname = @term${index} OR lastname = @term${index} OR address = @term${index} OR city = @term${index})`
-                  )
-                  .join(" OR ")})
-        `;
-
-        // Add error-tolerant match query using SOUNDEX
-        let errorQuery = `
-            SELECT *
-            FROM Users
-            WHERE (${terms
-                .map(
-                    (term, index) =>
-                        `(SOUNDEX(firstname) = SOUNDEX(@term${index}) OR SOUNDEX(lastname) = SOUNDEX(@term${index}))`
-                )
-                .join(" OR ")})
-        `;
+        // Base condition for suggested match query
+        const suggestedCondition = terms
+            .map(
+                (term, index) =>
+                    `(HCP_first_name LIKE '%' + @term${index} + '%' OR HCP_last_name LIKE '%' + @term${index} + '%' OR practice_city LIKE '%' + @term${index} + '%')`
+            )
+            .join(" OR ");
 
         // Add city filter if specified
-        if (city && city !== "All") {
-            exactQuery += ` AND city = @city`;
-            suggestedQuery += ` AND city = @city`;
-            errorQuery += ` AND city = @city`;
-            request.input("city", sql.NVarChar, city);
-        }
+        const cityFilter = city !== "All" ? "AND practice_city = @city" : "";
+
+        // Exact match query
+        const exactQuery = `
+            SELECT * 
+            FROM hcp_search_20250106 
+            WHERE (${exactCondition}) ${cityFilter}
+        `;
+
+        // Suggested match query
+        const suggestedQuery = `
+            SELECT * 
+            FROM hcp_search_20250106 
+            WHERE (${suggestedCondition}) ${cityFilter}
+              AND NOT (${exactCondition})
+        `;
 
         // Bind parameters for terms
         terms.forEach((term, index) => {
             request.input(`term${index}`, sql.NVarChar, term);
         });
 
+        // Bind city parameter if applicable
+        if (city !== "All") {
+            request.input("city", sql.NVarChar, city);
+        }
+
         // Execute exact match query
         const exactResult = await request.query(exactQuery);
 
+        // If exact matches exist, return them
         if (exactResult.recordset.length > 0) {
             return res.json({
                 type: "exact",
@@ -217,24 +265,10 @@ app.get("/search/smart", async (req, res) => {
         // Execute suggested match query
         const suggestedResult = await request.query(suggestedQuery);
 
-        // Execute error-tolerant query
-        const errorResult = await request.query(errorQuery);
-
-        // Mark error-tolerant results
-        errorResult.recordset.forEach((item) => (item.isErrorTolerant = true));
-
-        // Combine suggested and error-tolerant results, removing duplicates
-        const combinedSuggestedResults = [
-            ...suggestedResult.recordset,
-            ...errorResult.recordset,
-        ];
-        const uniqueSuggestedResults = Array.from(
-            new Map(combinedSuggestedResults.map((item) => [item.ID, item]))
-        ).map(([_, value]) => value); // Extract values from the map
-
+        // Return suggested matches if no exact matches exist
         res.json({
             type: "suggested",
-            results: uniqueSuggestedResults,
+            results: suggestedResult.recordset,
         });
     } catch (err) {
         console.error("Error executing smart search query:", err);
