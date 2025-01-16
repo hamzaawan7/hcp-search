@@ -56,10 +56,10 @@ app.get("/search/direct", async (req, res) => {
         let query = `
             SELECT * 
             FROM Users 
-            WHERE (firstname LIKE '%' + @searchTerm + '%'
-                OR lastname LIKE '%' + @searchTerm + '%'
-                OR address LIKE '%' + @searchTerm + '%'
-                OR city LIKE '%' + @searchTerm + '%')
+            WHERE (firstname = @searchTerm
+                OR lastname = @searchTerm
+                OR address = @searchTerm
+                OR city = @searchTerm)
         `;
 
         // If a specific city is selected, add a city filter
@@ -83,6 +83,8 @@ app.get("/search/direct", async (req, res) => {
         res.status(500).send("An error occurred while searching.");
     }
 });
+
+
 
 
 
@@ -156,7 +158,7 @@ app.get("/search/smart", async (req, res) => {
                     (term, index) =>
                         `(firstname = @term${index} OR lastname = @term${index} OR address = @term${index} OR city = @term${index})`
                 )
-                .join(" OR ")} )
+                .join(" OR ")})
         `;
 
         // Construct the suggested match query
@@ -168,20 +170,13 @@ app.get("/search/smart", async (req, res) => {
                     (term, index) =>
                         `(firstname LIKE '%' + @term${index} + '%' OR lastname LIKE '%' + @term${index} + '%' OR address LIKE '%' + @term${index} + '%' OR city LIKE '%' + @term${index} + '%')`
                 )
-                .join(" OR ")} )
+                .join(" OR ")})
               AND NOT (${terms
                   .map(
                       (term, index) =>
                           `(firstname = @term${index} OR lastname = @term${index} OR address = @term${index} OR city = @term${index})`
                   )
-                  .join(" OR ")} )
-        `;
-
-        // Add fuzzy match using CONTAINS or FREETEXT
-        let fuzzyQuery = `
-            SELECT *
-            FROM Users
-            WHERE FREETEXT((firstname, lastname, address, city), @fuzzyTerm)
+                  .join(" OR ")})
         `;
 
         // Add error-tolerant match query using SOUNDEX
@@ -193,14 +188,13 @@ app.get("/search/smart", async (req, res) => {
                     (term, index) =>
                         `(SOUNDEX(firstname) = SOUNDEX(@term${index}) OR SOUNDEX(lastname) = SOUNDEX(@term${index}))`
                 )
-                .join(" OR ")} )
+                .join(" OR ")})
         `;
 
         // Add city filter if specified
         if (city && city !== "All") {
             exactQuery += ` AND city = @city`;
             suggestedQuery += ` AND city = @city`;
-            fuzzyQuery += ` AND city = @city`;
             errorQuery += ` AND city = @city`;
             request.input("city", sql.NVarChar, city);
         }
@@ -209,9 +203,6 @@ app.get("/search/smart", async (req, res) => {
         terms.forEach((term, index) => {
             request.input(`term${index}`, sql.NVarChar, term);
         });
-
-        // Bind fuzzy search term
-        request.input("fuzzyTerm", sql.NVarChar, searchTerm);
 
         // Execute exact match query
         const exactResult = await request.query(exactQuery);
@@ -226,25 +217,20 @@ app.get("/search/smart", async (req, res) => {
         // Execute suggested match query
         const suggestedResult = await request.query(suggestedQuery);
 
-        // Execute fuzzy match query
-        const fuzzyResult = await request.query(fuzzyQuery);
-
         // Execute error-tolerant query
         const errorResult = await request.query(errorQuery);
 
-        // Mark fuzzy and error-tolerant results
-        fuzzyResult.recordset.forEach((item) => (item.isFuzzy = true));
+        // Mark error-tolerant results
         errorResult.recordset.forEach((item) => (item.isErrorTolerant = true));
 
-        // Combine all results, removing duplicates
+        // Combine suggested and error-tolerant results, removing duplicates
         const combinedSuggestedResults = [
             ...suggestedResult.recordset,
-            ...fuzzyResult.recordset,
             ...errorResult.recordset,
         ];
         const uniqueSuggestedResults = Array.from(
             new Map(combinedSuggestedResults.map((item) => [item.ID, item]))
-        );
+        ).map(([_, value]) => value); // Extract values from the map
 
         res.json({
             type: "suggested",
@@ -256,7 +242,9 @@ app.get("/search/smart", async (req, res) => {
     }
 });
 
-// Start the server on port 3000
+
+
+// Start the server on port 5000
 app.listen(5000, () => {
     console.log("Listening on port 5000...");
 });
