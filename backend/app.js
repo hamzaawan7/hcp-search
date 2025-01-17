@@ -45,7 +45,8 @@ app.get("/", (req, res) => {
 app.get("/search/direct", async (req, res) => {
     const searchTerm = req.query.term;
     const practice_city = req.query.city;
-    const page = parseInt(req.query.page, 10) || 1; // Default to page 1 if not specified
+    const country = req.query.country; // Get country filter from request
+    const page = parseInt(req.query.page, 10) || 1; // Default to page 1
     const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 results per page
 
     if (!searchTerm) {
@@ -58,9 +59,8 @@ app.get("/search/direct", async (req, res) => {
         // Calculate the starting row for pagination
         const offset = (page - 1) * limit;
 
-        // Base query with pagination
-        const baseQuery = `
-            FROM hcp_search_20250106
+        // Base query
+        let baseCondition = `
             WHERE (HCP_first_name = @searchTerm
                 OR HCP_last_name = @searchTerm
                 OR practice_address = @searchTerm)
@@ -68,7 +68,14 @@ app.get("/search/direct", async (req, res) => {
 
         // Add `practice_city` filter if provided
         if (practice_city && practice_city !== "All") {
-            baseQuery += ` AND practice_city = @practice_city`;
+            baseCondition += ` AND practice_city = @practice_city`;
+            request.input("practice_city", sql.NVarChar, practice_city);
+        }
+
+        // Add `practice_country` filter if provided
+        if (country && country !== "All") {
+            baseCondition += ` AND country = @country`;
+            request.input("country", sql.NVarChar, country);
         }
 
         // Query for retrieving paginated results
@@ -76,7 +83,8 @@ app.get("/search/direct", async (req, res) => {
             SELECT *
             FROM (
                 SELECT ROW_NUMBER() OVER (ORDER BY HCP_last_name) AS row_num, *
-                ${baseQuery}
+                FROM hcp_search_20250106
+                ${baseCondition}
             ) AS paginated
             WHERE row_num BETWEEN @offset + 1 AND @offset + @limit
         `;
@@ -84,17 +92,14 @@ app.get("/search/direct", async (req, res) => {
         // Query for total count
         const countQuery = `
             SELECT COUNT(*) AS total
-            ${baseQuery}
+            FROM hcp_search_20250106
+            ${baseCondition}
         `;
 
         // Add parameters
         request.input("searchTerm", sql.NVarChar, searchTerm);
         request.input("offset", sql.Int, offset);
         request.input("limit", sql.Int, limit);
-
-        if (practice_city && practice_city !== "All") {
-            request.input("practice_city", sql.NVarChar, practice_city);
-        }
 
         // Execute both queries
         const [result, countResult] = await Promise.all([
@@ -128,9 +133,12 @@ app.get("/search/direct", async (req, res) => {
 
 
 
+
+
 app.get("/search/multiple", async (req, res) => {
     const searchTerm = req.query.term;
     const practiceCity = req.query.city;
+    const country = req.query.country; 
 
     // Validate the search term
     if (!searchTerm) {
@@ -161,6 +169,10 @@ app.get("/search/multiple", async (req, res) => {
         // Add city filter if provided
         if (practiceCity && practiceCity !== "All") {
             query += ` AND practice_city = @practiceCity`;
+        }
+        if (country && country !== "All") {
+            baseCondition += ` AND country = @country`;
+            request.input("country", sql.NVarChar, country);
         }
 
         // Create a SQL request
@@ -196,6 +208,8 @@ app.get("/search/multiple", async (req, res) => {
 app.get("/search/smart", async (req, res) => {
     const searchTerm = req.query.term;
     const city = req.query.city || "All"; // Default to "All" if not specified
+    const page = parseInt(req.query.page, 10) || 1; // Default to page 1
+    const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 results per page
 
     if (!searchTerm) {
         return res.status(400).send({ error: "Search term is required." });
@@ -204,22 +218,25 @@ app.get("/search/smart", async (req, res) => {
     try {
         const request = new sql.Request();
 
+        // Calculate offset for pagination
+        const offset = (page - 1) * limit;
+
         // Split the search term into individual words
         const terms = searchTerm.split(",").map((term) => term.trim());
 
-        // Base condition for exact match query
+        // Exact match condition
         const exactCondition = terms
             .map(
                 (term, index) =>
-                    `(HCP_first_name = @term${index} OR HCP_last_name = @term${index} OR practice_city = @term${index})`
+                    `(HCP_first_name = @term${index} OR HCP_last_name = @term${index} OR country = @term${index} OR practice_city = @term${index})`
             )
             .join(" OR ");
 
-        // Base condition for suggested match query
+        // Suggested match condition
         const suggestedCondition = terms
             .map(
                 (term, index) =>
-                    `(HCP_first_name LIKE '%' + @term${index} + '%' OR HCP_last_name LIKE '%' + @term${index} + '%' OR practice_city LIKE '%' + @term${index} + '%')`
+                    `(HCP_first_name LIKE '%' + @term${index} + '%' OR HCP_last_name LIKE '%' + @term${index} + '%' OR country LIKE '%' + @term${index} + '%' OR practice_city LIKE '%' + @term${index} + '%')`
             )
             .join(" OR ");
 
@@ -229,52 +246,96 @@ app.get("/search/smart", async (req, res) => {
         // Exact match query
         const exactQuery = `
             SELECT * 
-            FROM hcp_search_20250106 
-            WHERE (${exactCondition}) ${cityFilter}
+            FROM (
+                SELECT ROW_NUMBER() OVER (ORDER BY HCP_last_name) AS row_num, *
+                FROM hcp_search_20250106 
+                WHERE (${exactCondition}) ${cityFilter}
+            ) AS paginated
+            WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
         `;
 
         // Suggested match query
         const suggestedQuery = `
             SELECT * 
-            FROM hcp_search_20250106 
-            WHERE (${suggestedCondition}) ${cityFilter}
-              AND NOT (${exactCondition})
+            FROM (
+                SELECT ROW_NUMBER() OVER (ORDER BY HCP_last_name) AS row_num, *
+                FROM hcp_search_20250106 
+                WHERE (${suggestedCondition}) ${cityFilter}
+                  AND NOT (${exactCondition})
+            ) AS paginated
+            WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
         `;
 
-        // Bind parameters for terms
+        // Total count query for suggested matches
+        const suggestedCountQuery = `
+            SELECT COUNT(*) AS total
+            FROM hcp_search_20250106 
+            WHERE (${suggestedCondition}) ${cityFilter}
+              AND NOT (${exactCondition});
+        `;
+
+        // Bind terms as parameters
         terms.forEach((term, index) => {
             request.input(`term${index}`, sql.NVarChar, term);
         });
 
-        // Bind city parameter if applicable
+        // Bind city parameter
         if (city !== "All") {
             request.input("city", sql.NVarChar, city);
         }
 
+        // Bind pagination parameters
+        request.input("offset", sql.Int, offset);
+        request.input("limit", sql.Int, limit);
+
         // Execute exact match query
         const exactResult = await request.query(exactQuery);
 
-        // If exact matches exist, return them
         if (exactResult.recordset.length > 0) {
+            // Return exact matches
             return res.json({
                 type: "exact",
                 results: exactResult.recordset,
+                pagination: {
+                    totalRecords: exactResult.recordset.length,
+                    currentPage: page,
+                    pageSize: limit,
+                },
             });
         }
 
-        // Execute suggested match query
-        const suggestedResult = await request.query(suggestedQuery);
+        // Execute suggested match queries
+        const [suggestedResult, suggestedCountResult] = await Promise.all([
+            request.query(suggestedQuery),
+            request.query(suggestedCountQuery),
+        ]);
 
-        // Return suggested matches if no exact matches exist
+        const totalSuggestedRecords = suggestedCountResult.recordset[0].total;
+        const totalSuggestedPages = Math.ceil(totalSuggestedRecords / limit);
+
+        // Return suggested matches
         res.json({
             type: "suggested",
             results: suggestedResult.recordset,
+            pagination: {
+                totalRecords: totalSuggestedRecords,
+                totalPages: totalSuggestedPages,
+                currentPage: page,
+                pageSize: limit,
+            },
         });
     } catch (err) {
         console.error("Error executing smart search query:", err);
-        res.status(500).send("An error occurred while searching.");
+        res.status(500).send({ error: "An error occurred while searching." });
     }
 });
+
+
+
+
+
+
+
 
 
 

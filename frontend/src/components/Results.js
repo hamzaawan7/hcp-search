@@ -2,15 +2,34 @@ import React, { useState } from "react";
 import "./Results.css";
 
 const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageChange }) => {
-    // Provide default values for destructuring
     const { currentPage = 1, totalPages = 1 } = pagination;
-
-    // State to handle expanded rows
     const [expandedRow, setExpandedRow] = useState(null);
 
-    // Common fields to display by default
-    const commonFields = ["NPI", "HCP_first_name", "HCP_last_name", "practice_address", "practice_city"];
-    // All fields (including additional fields to show on expand)
+    // Field display names mapping
+    const fieldDisplayNames = {
+        NPI: "NPI Number",
+        HCP_first_name: "First Name",
+        HCP_last_name: "Last Name",
+        practice_address: "Practice Address",
+        practice_city: "City",
+        practice_st: "State",
+        practice_postal_code: "Postal Code",
+        Provider_Credential_Text: "Provider Credentials",
+        Provider_Name_Prefix_Text: "Name Prefix",
+        mailing_address: "Mailing Address",
+        mailing_city: "Mailing City",
+        mailing_st: "Mailing State",
+        mailing_postal_code: "Mailing Postal Code",
+        Taxonomy_Code: "Taxonomy Code",
+        License_Number: "License Number",
+        Provider_License_State: "License State",
+        Specialty_1: "Specialty 1",
+        Specialty_2: "Specialty 2",
+        Specialty_3: "Specialty 3",
+        Country: "Country",
+    };
+
+    const commonFields = ["NPI", "HCP_first_name", "HCP_last_name", "practice_address", "Country"];
     const allFields = [
         "NPI",
         "HCP_first_name",
@@ -31,7 +50,6 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
         "Specialty_1",
         "Specialty_2",
         "Specialty_3",
-        "Country",
     ];
 
     const toggleExpandRow = (index) => {
@@ -61,7 +79,6 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
     const renderTableRows = (data) =>
         data.map((result, index) => (
             <React.Fragment key={result.NPI}>
-                {/* Common fields row */}
                 <tr>
                     {commonFields.map((field) => (
                         <td key={field}>{result[field]}</td>
@@ -75,7 +92,6 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
                         </button>
                     </td>
                 </tr>
-                {/* Expanded row for additional fields */}
                 {expandedRow === index && (
                     <tr className="expanded-row">
                         <td colSpan={commonFields.length + 1}>
@@ -86,7 +102,7 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
                                         (field) =>
                                             !commonFields.includes(field) && (
                                                 <li key={field}>
-                                                    <strong>{field.replace("_", " ")}:</strong>{" "}
+                                                    <strong>{fieldDisplayNames[field] || field}:</strong>{" "}
                                                     {result[field] || "N/A"}
                                                 </li>
                                             )
@@ -110,14 +126,12 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
                             <thead>
                                 <tr>
                                     {commonFields.map((field) => (
-                                        <th key={field}>{field.replace("_", " ")}</th>
+                                        <th key={field}>{fieldDisplayNames[field] || field}</th>
                                     ))}
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {renderTableRows(results.exact)}
-                            </tbody>
+                            <tbody>{renderTableRows(results.exact)}</tbody>
                         </table>
                     ) : (
                         <p>No exact matches found.</p>
@@ -129,37 +143,31 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
                             <thead>
                                 <tr>
                                     {commonFields.map((field) => (
-                                        <th key={field}>{field.replace("_", " ")}</th>
+                                        <th key={field}>{fieldDisplayNames[field] || field}</th>
                                     ))}
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {renderTableRows(results.suggested)}
-                            </tbody>
+                            <tbody>{renderTableRows(results.suggested)}</tbody>
                         </table>
                     ) : (
                         <p>No suggested matches found.</p>
                     )}
                 </div>
+            ) : results.length > 0 ? (
+                <table className="results-table">
+                    <thead>
+                        <tr>
+                            {commonFields.map((field) => (
+                                <th key={field}>{fieldDisplayNames[field] || field}</th>
+                            ))}
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>{renderTableRows(results)}</tbody>
+                </table>
             ) : (
-                results.length > 0 ? (
-                    <table className="results-table">
-                        <thead>
-                            <tr>
-                                {commonFields.map((field) => (
-                                    <th key={field}>{field.replace("_", " ")}</th>
-                                ))}
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {renderTableRows(results)}
-                        </tbody>
-                    </table>
-                ) : (
-                    <p>No results found for "{searchTerm}".</p>
-                )
+                <p>No results found for "{searchTerm}".</p>
             )}
             {renderPaginationControls()}
         </div>
