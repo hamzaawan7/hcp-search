@@ -1,9 +1,10 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Results.css";
 
 const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageChange }) => {
     const { currentPage = 1, totalPages = 1 } = pagination;
-    const [expandedRow, setExpandedRow] = useState(null);
+    const navigate = useNavigate();
 
     // Field display names mapping
     const fieldDisplayNames = {
@@ -29,7 +30,7 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
         Country: "Country",
     };
 
-    const commonFields = ["NPI", "HCP_first_name", "HCP_last_name", "practice_address", "Country"];
+    const commonFields = ["NPI", "HCP_first_name", "HCP_last_name", "practice_address", "practice_st", "Country"];
     const allFields = [
         "NPI",
         "HCP_first_name",
@@ -52,10 +53,6 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
         "Specialty_3",
     ];
 
-    const toggleExpandRow = (index) => {
-        setExpandedRow(expandedRow === index ? null : index);
-    };
-
     const renderPaginationControls = () => (
         <div className="pagination-controls">
             <button
@@ -76,43 +73,25 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
         </div>
     );
 
+    const handleViewDetails = (npi) => {
+        navigate(`/details/${npi}`); // Redirect to the details page with the selected NPI
+    };
+
     const renderTableRows = (data) =>
-        data.map((result, index) => (
-            <React.Fragment key={result.NPI}>
-                <tr>
-                    {commonFields.map((field) => (
-                        <td key={field}>{result[field]}</td>
-                    ))}
-                    <td>
-                        <button
-                            className="view-button"
-                            onClick={() => toggleExpandRow(index)}
-                        >
-                            {expandedRow === index ? "Hide" : "View"}
-                        </button>
-                    </td>
-                </tr>
-                {expandedRow === index && (
-                    <tr className="expanded-row">
-                        <td colSpan={commonFields.length + 1}>
-                            <div className="details-container">
-                                <h4>Additional Details</h4>
-                                <ul>
-                                    {allFields.map(
-                                        (field) =>
-                                            !commonFields.includes(field) && (
-                                                <li key={field}>
-                                                    <strong>{fieldDisplayNames[field] || field}:</strong>{" "}
-                                                    {result[field] || "N/A"}
-                                                </li>
-                                            )
-                                    )}
-                                </ul>
-                            </div>
-                        </td>
-                    </tr>
-                )}
-            </React.Fragment>
+        data.map((result) => (
+            <tr key={result.NPI}>
+                {commonFields.map((field) => (
+                    <td key={field}>{result[field]}</td>
+                ))}
+                <td>
+                    <button
+                        className="view-button"
+                        onClick={() => handleViewDetails(result.NPI)}
+                    >
+                        View
+                    </button>
+                </td>
+            </tr>
         ));
 
     return (
@@ -169,6 +148,7 @@ const Results = ({ type, results = [], searchTerm = "", pagination = {}, onPageC
             ) : (
                 <p>No results found for "{searchTerm}".</p>
             )}
+
             {renderPaginationControls()}
         </div>
     );
