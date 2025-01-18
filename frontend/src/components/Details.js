@@ -1,45 +1,78 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import axios from "axios";
+import "./Details.css";
 
 const Details = () => {
+    const navigate = useNavigate();
     const { npi } = useParams();
-    const [details, setDetails] = useState(null);
+    const location = useLocation();
+
+    const [record, setRecord] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    const previousState = location.state || {};
 
     useEffect(() => {
-        const fetchDetails = async () => {
+        console.log("Fetching details for NPI:", npi); // Debugging
+        const fetchDetail = async () => {
             try {
-                setLoading(true);
                 const response = await axios.get(`http://localhost:5000/search/direct/detail/${npi}`);
-                setDetails(response.data);
-                setLoading(false);
+                setRecord(response.data);
             } catch (err) {
-                console.error("Error fetching details:", err);
+                setError("Failed to load details.");
+            } finally {
                 setLoading(false);
             }
         };
-        fetchDetails();
+
+        if (npi) {
+            fetchDetail();
+        } else {
+            setError("No valid NPI provided.");
+            setLoading(false);
+        }
     }, [npi]);
 
+
+    const handleBackClick = () => {
+        if (previousState.previousPage) {
+            navigate(previousState.previousPage, { state: previousState });
+        } else {
+            navigate("/"); // Default fallback
+        }
+    };
+
     if (loading) {
-        return <p>Loading details...</p>;
+        return <div className="loading-message">Loading details...</div>;
     }
 
-    if (!details) {
-        return <p>No details found for NPI: {npi}</p>;
+    if (error) {
+        return <div className="error-message">{error}</div>;
+    }
+
+    if (!record) {
+        return <div>No data found.</div>;
     }
 
     return (
         <div className="details-container">
+            <button className="back-button" onClick={handleBackClick}>
+                Back
+            </button>
+
             <h3>Details for NPI: {npi}</h3>
-            <ul>
-                {Object.entries(details).map(([key, value]) => (
-                    <li key={key}>
-                        <strong>{key.replace(/_/g, " ")}:</strong> {value || "N/A"}
-                    </li>
+            <table className="details-table">
+                <tbody>
+                {Object.entries(record).map(([key, value]) => (
+                    <tr key={key}>
+                        <th>{key.replace(/_/g, " ")}</th>
+                        <td>{value}</td>
+                    </tr>
                 ))}
-            </ul>
+                </tbody>
+            </table>
         </div>
     );
 };

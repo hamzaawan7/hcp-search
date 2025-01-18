@@ -255,7 +255,7 @@ app.get("/search/smart", async (req, res) => {
         const offset = (page - 1) * limit;
 
         // Split the search term into individual words
-        const terms = searchTerm.split(",").map((term) => term.trim());
+        const terms = searchTerm.split(",").map((term) => term.trim()).filter(Boolean);
 
         // Exact match condition
         const exactCondition = terms
@@ -265,17 +265,8 @@ app.get("/search/smart", async (req, res) => {
             )
             .join(" OR ");
 
-        // Suggested match condition
-        const suggestedCondition = terms
-            .map(
-                (term, index) =>
-                    `(practice_city LIKE '%' + @term${index} + '%' 
-                    OR practice_address LIKE '%' + @term${index} + '%')`
-            )
-            .join(" OR ");
-
-        // Error match condition (SOUNDEX for similar sounding words)
-        const errorMatchCondition = terms
+        // Fuzzy match (optional, for debugging or fallback)
+        const fuzzyCondition = terms
             .map(
                 (term, index) =>
                     `(SOUNDEX(HCP_first_name) = SOUNDEX(@term${index}) OR SOUNDEX(HCP_last_name) = SOUNDEX(@term${index}))`
@@ -296,24 +287,8 @@ app.get("/search/smart", async (req, res) => {
             WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
         `;
 
-        // Suggested match query
-        const suggestedQuery = `
-            SELECT * 
-            FROM (
-                SELECT ROW_NUMBER() OVER (ORDER BY HCP_last_name) AS row_num, *
-                FROM hcp_search_20250106 
-                WHERE (${suggestedCondition}) ${cityFilter}
-                  AND NOT (${exactCondition})
-            ) AS paginated
-            WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
-        `;
-
-        // Error match query
-        const errorMatchQuery = `
-            SELECT DISTINCT *
-            FROM hcp_search_20250106
-            WHERE (${errorMatchCondition}) ${cityFilter};
-        `;
+        // Log query for debugging
+        console.log("Generated Exact Query:", exactQuery);
 
         // Bind terms as parameters
         terms.forEach((term, index) => {
@@ -329,28 +304,42 @@ app.get("/search/smart", async (req, res) => {
         request.input("offset", sql.Int, offset);
         request.input("limit", sql.Int, limit);
 
-        // Execute all queries
-        const [exactResult, suggestedResult, errorMatchResult] = await Promise.all([
-            request.query(exactQuery),
-            request.query(suggestedQuery),
-            request.query(errorMatchQuery),
-        ]);
+        // Execute exact match query
+        const exactResult = await request.query(exactQuery);
 
         const totalExactRecords = exactResult.recordset.length;
-        const totalSuggestedRecords = suggestedResult.recordset.length;
-        const errorMatchRecords = errorMatchResult.recordset;
 
-        // Response with all types of matches
-        res.json({
-            type: "smart",
-            exact: exactResult.recordset,
-            suggested: suggestedResult.recordset,
-            errorMatches: errorMatchRecords,
+        if (totalExactRecords > 0) {
+            // Return exact matches
+            return res.json({
+                type: "exact",
+                results: exactResult.recordset,
+                pagination: {
+                    totalRecords: totalExactRecords,
+                    currentPage: page,
+                    pageSize: limit,
+                },
+            });
+        }
+
+        // If no exact matches, optionally fallback to fuzzy matches
+        const fuzzyQuery = `
+            SELECT DISTINCT *
+            FROM hcp_search_20250106
+            WHERE (${fuzzyCondition}) ${cityFilter};
+        `;
+
+        console.log("Generated Fuzzy Query (Fallback):", fuzzyQuery);
+
+        const fuzzyResult = await request.query(fuzzyQuery);
+
+        return res.json({
+            type: "fuzzy",
+            results: fuzzyResult.recordset,
             pagination: {
-                totalExactRecords,
-                totalSuggestedRecords,
-                currentPage: page,
-                pageSize: limit,
+                totalRecords: fuzzyResult.recordset.length,
+                currentPage: 1,
+                pageSize: fuzzyResult.recordset.length,
             },
         });
     } catch (err) {
@@ -358,24 +347,6 @@ app.get("/search/smart", async (req, res) => {
         res.status(500).send({ error: "An error occurred while searching.", details: err.message });
     }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // Start the server on port 5000

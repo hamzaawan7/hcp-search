@@ -14,7 +14,7 @@ function App() {
                 <main>
                     <Routes>
                         <Route path="/" element={<Search />} />
-                        <Route path="/details/:id" element={<Details />} />
+                        <Route path="/details/:npi" element={<Details />} />
                     </Routes>
                 </main>
             </div>
