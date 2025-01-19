@@ -1,0 +1,176 @@
+/* Search Bar Container */
+.search-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #fff; /* White background */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    max-width: 800px;
+    margin: 20px auto; /* Center align */
+    font-family: Arial, sans-serif; /* Modern font */
+}
+
+/* Search Controls */
+.search-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px; /* Space between buttons */
+    margin-bottom: 20px;
+}
+
+/* Search Type Buttons */
+.search-type-button {
+    padding: 10px 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #f5f5f5; /* Light gray background */
+    color: #333; /* Dark text color */
+    transition: all 0.3s ease; /* Smooth transition */
+}
+
+.search-type-button.active {
+    background-color: #007bff; /* Blue background for active button */
+    color: #fff; /* White text for active button */
+    border: 1px solid #007bff;
+}
+
+.search-type-button:hover {
+    background-color: #007bff; /* Blue background on hover */
+    color: #fff; /* White text on hover */
+    border: 1px solid #007bff;
+}
+
+/* Search Inputs */
+.search-inputs {
+    display: flex;
+    justify-content: center;
+    gap: 15px; /* Space between input fields */
+    width: 100%;
+}
+
+/* Input Field */
+.search-inputs input {
+    flex: 1;
+    padding: 10px 15px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.search-inputs input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Dropdown */
+.search-inputs select {
+    padding: 10px 15px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.search-inputs select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Search Button */
+.search-inputs button {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #ff7f0e; /* Orange button */
+    color: #fff; /* White text */
+    transition: all 0.3s ease;
+}
+
+.search-inputs button:hover {
+    background-color: #ff5700; /* Darker orange on hover */
+}
+
+/* Pagination Controls */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px; /* Space between buttons and text */
+    margin-top: 20px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    color: #333;
+}
+
+/* Pagination Buttons */
+.pagination-controls button {
+    padding: 8px 16px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f5f5f5; /* Light gray background */
+    color: #333; /* Dark text */
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pagination-controls button:hover {
+    background-color: #007bff; /* Blue background on hover */
+    color: #fff; /* White text on hover */
+    border-color: #007bff;
+}
+
+.pagination-controls button:disabled {
+    background-color: #e0e0e0; /* Light gray for disabled state */
+    color: #aaa; /* Lighter text for disabled state */
+    border-color: #e0e0e0;
+    cursor: not-allowed;
+}
+
+/* Pagination Text */
+.pagination-controls span {
+    font-size: 14px;
+    color: #333;
+    font-weight: bold; /* Make it stand out */
+}
+
+/* Loader container styling */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px; /* Adjust height as needed */
+    background-color: #f9f9f9; /* Light gray background for aesthetic */
+    border-radius: 10px; /* Smooth rounded edges */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow effect */
+    margin: 20px auto;
+    width: 80%; /* Centered width, adjust as needed */
+}
+
+/* Loader spinner animation */
+.loader-spinner {
+    animation: fade-in 0.5s ease-in-out;
+}
+
+/* Fade-in animation for loader */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
