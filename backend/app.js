@@ -47,7 +47,7 @@ app.get("/search/direct", async (req, res) => {
     const practice_city = req.query.city;
     const country = req.query.country; // Get country filter from request
     const page = parseInt(req.query.page, 10) || 1; // Default to page 1
-    const limit = parseInt(req.query.limit, 10) || 10; // Default to 10 results per page
+    const limit = 5;  // Default to 10 results per page
 
     if (!searchTerm) {
         return res.status(400).send({ error: "Search term is required." });
@@ -127,13 +127,49 @@ app.get("/search/direct", async (req, res) => {
     }
 });
 
+app.get("/search/direct/detail/:npi", async (req, res) => {
+    const { npi } = req.params;
 
+    // Validate the NPI parameter
+    if (!npi || isNaN(npi)) {
+        return res.status(400).send({ error: "Invalid or missing NPI parameter." });
+    }
 
+    try {
+        const request = new sql.Request();
+        const query = `
+            SELECT 
+                Provider_Credential_Text,
+                Provider_Name_Prefix_Text,
+                practice_postal_code,
+                mailing_address,
+                mailing_city,
+                mailing_st,
+                mailing_postal_code,
+                Taxonomy_Code,
+                License_Number,
+                Provider_License_State,
+                Specialty_1,
+                Specialty_2,
+                Specialty_3
+            FROM hcp_search_20250106
+            WHERE NPI = @npi;
+        `;
 
+        request.input("npi", sql.NVarChar, npi);
 
+        const result = await request.query(query);
 
-
-
+        if (result.recordset.length > 0) {
+            res.json(result.recordset[0]); // Return detailed data for the record
+        } else {
+            res.status(404).send({ error: "No data found for the provided NPI." });
+        }
+    } catch (err) {
+        console.error("Error fetching detailed data:", err);
+        res.status(500).send("An error occurred while fetching detailed data.");
+    }
+});
 
 app.get("/search/multiple", async (req, res) => {
     const searchTerm = req.query.term;
@@ -202,9 +238,6 @@ app.get("/search/multiple", async (req, res) => {
     }
 });
 
-
-
-
 app.get("/search/smart", async (req, res) => {
     const searchTerm = req.query.term;
     const city = req.query.city || "All"; // Default to "All" if not specified
@@ -222,21 +255,21 @@ app.get("/search/smart", async (req, res) => {
         const offset = (page - 1) * limit;
 
         // Split the search term into individual words
-        const terms = searchTerm.split(",").map((term) => term.trim());
+        const terms = searchTerm.split(",").map((term) => term.trim()).filter(Boolean);
 
         // Exact match condition
         const exactCondition = terms
             .map(
                 (term, index) =>
-                    `(HCP_first_name = @term${index} OR HCP_last_name = @term${index} OR country = @term${index} OR practice_city = @term${index})`
+                    `(HCP_first_name = @term${index} OR HCP_last_name = @term${index} OR country = @term${index})`
             )
             .join(" OR ");
 
-        // Suggested match condition
-        const suggestedCondition = terms
+        // Fuzzy match (optional, for debugging or fallback)
+        const fuzzyCondition = terms
             .map(
                 (term, index) =>
-                    `(HCP_first_name LIKE '%' + @term${index} + '%' OR HCP_last_name LIKE '%' + @term${index} + '%' OR country LIKE '%' + @term${index} + '%' OR practice_city LIKE '%' + @term${index} + '%')`
+                    `(SOUNDEX(HCP_first_name) = SOUNDEX(@term${index}) OR SOUNDEX(HCP_last_name) = SOUNDEX(@term${index}))`
             )
             .join(" OR ");
 
@@ -254,25 +287,8 @@ app.get("/search/smart", async (req, res) => {
             WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
         `;
 
-        // Suggested match query
-        const suggestedQuery = `
-            SELECT * 
-            FROM (
-                SELECT ROW_NUMBER() OVER (ORDER BY HCP_last_name) AS row_num, *
-                FROM hcp_search_20250106 
-                WHERE (${suggestedCondition}) ${cityFilter}
-                  AND NOT (${exactCondition})
-            ) AS paginated
-            WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
-        `;
-
-        // Total count query for suggested matches
-        const suggestedCountQuery = `
-            SELECT COUNT(*) AS total
-            FROM hcp_search_20250106 
-            WHERE (${suggestedCondition}) ${cityFilter}
-              AND NOT (${exactCondition});
-        `;
+        // Log query for debugging
+        console.log("Generated Exact Query:", exactQuery);
 
         // Bind terms as parameters
         terms.forEach((term, index) => {
@@ -291,52 +307,46 @@ app.get("/search/smart", async (req, res) => {
         // Execute exact match query
         const exactResult = await request.query(exactQuery);
 
-        if (exactResult.recordset.length > 0) {
+        const totalExactRecords = exactResult.recordset.length;
+
+        if (totalExactRecords > 0) {
             // Return exact matches
             return res.json({
                 type: "exact",
                 results: exactResult.recordset,
                 pagination: {
-                    totalRecords: exactResult.recordset.length,
+                    totalRecords: totalExactRecords,
                     currentPage: page,
                     pageSize: limit,
                 },
             });
         }
 
-        // Execute suggested match queries
-        const [suggestedResult, suggestedCountResult] = await Promise.all([
-            request.query(suggestedQuery),
-            request.query(suggestedCountQuery),
-        ]);
+        // If no exact matches, optionally fallback to fuzzy matches
+        const fuzzyQuery = `
+            SELECT DISTINCT *
+            FROM hcp_search_20250106
+            WHERE (${fuzzyCondition}) ${cityFilter};
+        `;
 
-        const totalSuggestedRecords = suggestedCountResult.recordset[0].total;
-        const totalSuggestedPages = Math.ceil(totalSuggestedRecords / limit);
+        console.log("Generated Fuzzy Query (Fallback):", fuzzyQuery);
 
-        // Return suggested matches
-        res.json({
-            type: "suggested",
-            results: suggestedResult.recordset,
+        const fuzzyResult = await request.query(fuzzyQuery);
+
+        return res.json({
+            type: "fuzzy",
+            results: fuzzyResult.recordset,
             pagination: {
-                totalRecords: totalSuggestedRecords,
-                totalPages: totalSuggestedPages,
-                currentPage: page,
-                pageSize: limit,
+                totalRecords: fuzzyResult.recordset.length,
+                currentPage: 1,
+                pageSize: fuzzyResult.recordset.length,
             },
         });
     } catch (err) {
         console.error("Error executing smart search query:", err);
-        res.status(500).send({ error: "An error occurred while searching." });
+        res.status(500).send({ error: "An error occurred while searching.", details: err.message });
     }
 });
-
-
-
-
-
-
-
-
 
 
 // Start the server on port 5000

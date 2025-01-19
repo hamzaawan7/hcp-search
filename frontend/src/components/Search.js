@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import Results from "./Results";
 import "../components/Search.css";
+import { TailSpin } from "react-loader-spinner";
 
 const Search = () => {
     const [searchType, setSearchType] = useState("direct");
@@ -13,18 +14,20 @@ const Search = () => {
         currentPage: 1,
         totalPages: 1,
         totalRecords: 0,
-        pageSize: 10, // Ensure pageSize is always defined
+        pageSize: 5,
     });
+    const [loading, setLoading] = useState(false); // Loading state
 
-    const handleSearch = async (page = 1, limit = pagination.pageSize || 10) => {
+    const handleSearch = async (page = 1, limit = 5) => {
         if (!searchTerm.trim()) {
             alert("Please enter a valid search term!");
             return;
         }
-
+    
+        setLoading(true); // Start the loading spinner
         try {
             let response;
-
+    
             if (searchType === "direct") {
                 response = await axios.get("http://localhost:5000/search/direct", {
                     params: { term: searchTerm, country, page, limit },
@@ -33,7 +36,7 @@ const Search = () => {
                 response = await axios.get("http://localhost:5000/search/smart", {
                     params: { term: searchTerm, country, page, limit },
                 });
-
+    
                 setResults({
                     exact: response.data.type === "exact" ? response.data.results : [],
                     suggested: response.data.type === "suggested" ? response.data.results : [],
@@ -53,7 +56,7 @@ const Search = () => {
                     params: { term: searchTerm, country, page, limit },
                 });
             }
-
+    
             if (response) {
                 setResults(response.data.results || []);
                 setType(response.data.type);
@@ -69,6 +72,31 @@ const Search = () => {
         } catch (err) {
             console.error(`Error fetching ${searchType} search results:`, err);
             alert(`An error occurred while performing the ${searchType} search.`);
+        } finally {
+            setLoading(false); // Stop the loading spinner
+        }
+    };
+    
+
+    const fetchDetails = async (npi) => {
+        if (!npi) {
+            alert("Invalid NPI provided.");
+            return;
+        }
+
+        console.log("Fetching details for NPI:", npi); // Debugging log
+
+        try {
+            const response = await axios.get(`http://localhost:5000/search/direct/detail/${npi}`);
+            const detailedData = response.data;
+            setResults((prevResults) => {
+                return prevResults.map((result) =>
+                    result.NPI === npi ? { ...result, detailedData } : result
+                );
+            });
+        } catch (err) {
+            console.error("Error fetching detailed data:", err);
+            alert("An error occurred while fetching detailed data.");
         }
     };
 
@@ -120,13 +148,28 @@ const Search = () => {
                 <button onClick={() => handleSearch(1)}>Search</button>
             </div>
 
-            <Results
-                type={type}
-                results={results}
-                searchTerm={searchTerm}
-                pagination={pagination}
-                onPageChange={handlePageChange}
-            />
+            {loading ? (
+                <div className="loading-container">
+                    <TailSpin
+                        height="80"
+                        width="80"
+                        color="#4fa94d"
+                        ariaLabel="tail-spin-loading"
+                        radius="1"
+                        wrapperClass="loader-spinner"
+                        visible={true}
+                    />
+                </div>
+            ) : (
+                <Results
+                    type={type}
+                    results={results}
+                    searchTerm={searchTerm}
+                    pagination={pagination}
+                    onPageChange={handlePageChange}
+                    fetchDetails={fetchDetails} // Pass the full data fetch function
+                />
+            )}
         </div>
     );
 };

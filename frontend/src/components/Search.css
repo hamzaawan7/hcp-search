@@ -144,3 +144,33 @@
     color: #333;
     font-weight: bold; /* Make it stand out */
 }
+
+/* Loader container styling */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px; /* Adjust height as needed */
+    background-color: #f9f9f9; /* Light gray background for aesthetic */
+    border-radius: 10px; /* Smooth rounded edges */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow effect */
+    margin: 20px auto;
+    width: 80%; /* Centered width, adjust as needed */
+}
+
+/* Loader spinner animation */
+.loader-spinner {
+    animation: fade-in 0.5s ease-in-out;
+}
+
+/* Fade-in animation for loader */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
