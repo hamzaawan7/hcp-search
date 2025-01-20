@@ -9,100 +9,79 @@ const Search = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [country, setCountry] = useState("All");
     const [results, setResults] = useState([]);
-    const [type, setType] = useState("");
+    const [exact, setExact] = useState([]);
+    const [suggested, setSuggested] = useState([]);
     const [pagination, setPagination] = useState({
         currentPage: 1,
         totalPages: 1,
         totalRecords: 0,
         pageSize: 5,
     });
-    const [loading, setLoading] = useState(false); // Loading state
+    const [exactPagination, setExactPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: 0,
+        pageSize: 5,
+    });
+    const [suggestedPagination, setSuggestedPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: 0,
+        pageSize: 5,
+    });
+    const [loading, setLoading] = useState(false);
 
     const handleSearch = async (page = 1, limit = 5) => {
-        if (!searchTerm.trim()) {
-            alert("Please enter a valid search term!");
-            return;
-        }
-    
-        setLoading(true); // Start the loading spinner
+        setLoading(true);
         try {
+            const params = { term: searchTerm, country, page, limit };
             let response;
-    
+
             if (searchType === "direct") {
-                response = await axios.get("http://localhost:5000/search/direct", {
-                    params: { term: searchTerm, country, page, limit },
-                });
-            } else if (searchType === "smart") {
-                response = await axios.get("http://localhost:5000/search/smart", {
-                    params: { term: searchTerm, country, page, limit },
-                });
-    
-                setResults({
-                    exact: response.data.type === "exact" ? response.data.results : [],
-                    suggested: response.data.type === "suggested" ? response.data.results : [],
-                });
-                setType("smart");
-                setPagination(
-                    response.data.pagination || {
-                        currentPage: page,
-                        totalPages: 1,
-                        totalRecords: 0,
-                        pageSize: limit,
-                    }
-                );
-                return;
-            } else if (searchType === "multiple") {
-                response = await axios.get("http://localhost:5000/search/multiple", {
-                    params: { term: searchTerm, country, page, limit },
-                });
-            }
-    
-            if (response) {
+                response = await axios.get("http://localhost:5000/search/direct", { params });
                 setResults(response.data.results || []);
-                setType(response.data.type);
-                setPagination(
-                    response.data.pagination || {
-                        currentPage: page,
-                        totalPages: 1,
-                        totalRecords: 0,
-                        pageSize: limit,
-                    }
-                );
+                setPagination(response.data.pagination || {});
+                setExact([]);
+                setSuggested([]);
+            } else if (searchType === "smart") {
+                // Fetch exact matches
+                const exactResponse = await axios.get("http://localhost:5000/search/smart/exact", { params });
+                console.log(params); // Log the parameters to verify the term is correct
+                setExact(exactResponse.data.results || []);
+                setExactPagination(exactResponse.data.pagination || {});
+
+                const suggestedResponse = await axios.get("http://localhost:5000/search/smart/suggested", { params });
+                setSuggested(suggestedResponse.data.results || []);
+                setSuggestedPagination(suggestedResponse.data.pagination || {});
+            } else if (searchType === "multiple") {
+                response = await axios.get("http://localhost:5000/search/multiple", { params });
+                setResults(response.data.results || []);
+                setPagination(response.data.pagination || {});
+                setExact([]);
+                setSuggested([]);
             }
         } catch (err) {
             console.error(`Error fetching ${searchType} search results:`, err);
-            alert(`An error occurred while performing the ${searchType} search.`);
         } finally {
-            setLoading(false); // Stop the loading spinner
-        }
-    };
-    
-
-    const fetchDetails = async (npi) => {
-        if (!npi) {
-            alert("Invalid NPI provided.");
-            return;
-        }
-
-        console.log("Fetching details for NPI:", npi); // Debugging log
-
-        try {
-            const response = await axios.get(`http://localhost:5000/search/direct/detail/${npi}`);
-            const detailedData = response.data;
-            setResults((prevResults) => {
-                return prevResults.map((result) =>
-                    result.NPI === npi ? { ...result, detailedData } : result
-                );
-            });
-        } catch (err) {
-            console.error("Error fetching detailed data:", err);
-            alert("An error occurred while fetching detailed data.");
+            setLoading(false);
         }
     };
 
     const handlePageChange = (newPage) => {
         if (newPage > 0 && newPage <= pagination.totalPages) {
             handleSearch(newPage, pagination.pageSize);
+        }
+    };
+
+    const handleExactPageChange = (newPage) => {
+        if (newPage > 0 && newPage <= exactPagination.totalPages) {
+            handleSearch(newPage, exactPagination.pageSize);
+        }
+    };
+
+    const handleSuggestedPageChange = (newPage) => {
+        if (newPage > 0 && newPage <= suggestedPagination.totalPages) {
+            handleSearch(newPage, suggestedPagination.pageSize);
         }
     };
 
@@ -150,24 +129,21 @@ const Search = () => {
 
             {loading ? (
                 <div className="loading-container">
-                    <TailSpin
-                        height="80"
-                        width="80"
-                        color="#4fa94d"
-                        ariaLabel="tail-spin-loading"
-                        radius="1"
-                        wrapperClass="loader-spinner"
-                        visible={true}
-                    />
+                    <TailSpin height="80" width="80" color="#4fa94d" />
                 </div>
             ) : (
                 <Results
-                    type={type}
+                    type={searchType}
                     results={results}
+                    exact={exact}
+                    suggested={suggested}
                     searchTerm={searchTerm}
                     pagination={pagination}
+                    exactPagination={exactPagination}
+                    suggestedPagination={suggestedPagination}
                     onPageChange={handlePageChange}
-                    fetchDetails={fetchDetails} // Pass the full data fetch function
+                    onExactPageChange={handleExactPageChange}
+                    onSuggestedPageChange={handleSuggestedPageChange}
                 />
             )}
         </div>
