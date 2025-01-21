@@ -117,3 +117,26 @@
     color: #333;
     font-weight: bold; /* Make pagination text stand out */
 }
+
+/* Style for the View button */
+.view-button {
+    background-color: #4CAF50; /* Green background */
+    color: white; /* White text */
+    padding: 10px 20px; /* Padding inside the button */
+    border: none; /* Remove default border */
+    border-radius: 5px; /* Rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+    font-size: 14px; /* Font size */
+    transition: background-color 0.3s ease; /* Smooth background color transition */
+}
+
+/* Style when hovering over the button */
+.view-button:hover {
+    background-color: #45a049; /* Darker green when hovered */
+}
+
+/* Style when the button is disabled */
+.view-button:disabled {
+    background-color: #ccc; /* Light gray background for disabled state */
+    cursor: not-allowed; /* Not allowed cursor */
+}

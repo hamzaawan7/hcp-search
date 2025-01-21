@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Results from "./Results";
 import "../components/Search.css";
 import { TailSpin } from "react-loader-spinner";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Search = () => {
+    const navigate = useNavigate();
+    const location = useLocation(); // To capture the current URL and query params
     const [searchType, setSearchType] = useState("direct");
     const [searchTerm, setSearchTerm] = useState("");
     const [country, setCountry] = useState("All");
@@ -29,13 +32,36 @@ const Search = () => {
         totalRecords: 0,
         pageSize: 5,
     });
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false); // Flag to track the loading status
 
+    // Use location to track the URL parameters
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const querySearchType = queryParams.get("type") || "direct";
+        const querySearchTerm = queryParams.get("term") || "";
+        const queryCountry = queryParams.get("country") || "All";
+
+        setSearchType(querySearchType);
+        setSearchTerm(querySearchTerm);
+        setCountry(queryCountry);
+
+        if (querySearchTerm) {
+            handleSearch(1);
+        }
+    }, [location]);
+
+    // Updated handleSearch function with loading flag
     const handleSearch = async (page = 1, limit = 5) => {
+        if (loading) return; // Prevent multiple requests if a request is already in progress
+
         setLoading(true);
         try {
             const params = { term: searchTerm, country, page, limit };
             let response;
+
+            // Update the URL dynamically with search params
+            const newUrl = `?type=${searchType}&term=${searchTerm}&country=${country}`;
+            navigate(newUrl, { replace: true });
 
             if (searchType === "direct") {
                 response = await axios.get("http://localhost:5000/search/direct", { params });
@@ -46,7 +72,6 @@ const Search = () => {
             } else if (searchType === "smart") {
                 // Fetch exact matches
                 const exactResponse = await axios.get("http://localhost:5000/search/smart/exact", { params });
-                console.log(params); // Log the parameters to verify the term is correct
                 setExact(exactResponse.data.results || []);
                 setExactPagination(exactResponse.data.pagination || {});
 
@@ -63,7 +88,7 @@ const Search = () => {
         } catch (err) {
             console.error(`Error fetching ${searchType} search results:`, err);
         } finally {
-            setLoading(false);
+            setLoading(false); // Reset the loading flag after the request is complete
         }
     };
 
@@ -91,18 +116,21 @@ const Search = () => {
                 <button
                     className={`search-type-button ${searchType === "direct" ? "active" : ""}`}
                     onClick={() => setSearchType("direct")}
+                    disabled={loading} // Disable button when loading
                 >
                     Direct Search
                 </button>
                 <button
                     className={`search-type-button ${searchType === "smart" ? "active" : ""}`}
                     onClick={() => setSearchType("smart")}
+                    disabled={loading} // Disable button when loading
                 >
                     Smart Search
                 </button>
                 <button
                     className={`search-type-button ${searchType === "multiple" ? "active" : ""}`}
                     onClick={() => setSearchType("multiple")}
+                    disabled={loading} // Disable button when loading
                 >
                     Multiple Search
                 </button>
@@ -114,8 +142,9 @@ const Search = () => {
                     placeholder="Enter search term"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    disabled={loading} // Disable input when loading
                 />
-                <select value={country} onChange={(e) => setCountry(e.target.value)}>
+                <select value={country} onChange={(e) => setCountry(e.target.value)} disabled={loading}>
                     <option value="All">All</option>
                     <option value="US">United States</option>
                     <option value="Portugal">Portugal</option>
@@ -124,7 +153,12 @@ const Search = () => {
                     <option value="Belgium">Belgium</option>
                     <option value="Netherlands">Netherlands</option>
                 </select>
-                <button onClick={() => handleSearch(1)}>Search</button>
+                <button
+                    onClick={() => handleSearch(1)}
+                    disabled={loading} // Disable button when loading
+                >
+                    Search
+                </button>
             </div>
 
             {loading ? (

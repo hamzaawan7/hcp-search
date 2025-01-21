@@ -5,21 +5,19 @@ import "./Details.css";
 
 const Details = () => {
     const navigate = useNavigate();
-    const { npi } = useParams();
+    const { npi } = useParams();  // Getting NPI from the URL
     const location = useLocation();
+    const previousState = location.state || {};  // Get previous state (previous page, search term, pagination)
 
     const [record, setRecord] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    const previousState = location.state || {};
-
     useEffect(() => {
-        console.log("Fetching details for NPI:", npi); // Debugging
         const fetchDetail = async () => {
             try {
                 const response = await axios.get(`http://localhost:5000/search/direct/detail/${npi}`);
-                setRecord(response.data);
+                setRecord(response.data);  // Populate record with data
             } catch (err) {
                 setError("Failed to load details.");
             } finally {
@@ -28,19 +26,25 @@ const Details = () => {
         };
 
         if (npi) {
-            fetchDetail();
+            fetchDetail();  // Fetch details based on NPI
         } else {
             setError("No valid NPI provided.");
             setLoading(false);
         }
     }, [npi]);
 
-
     const handleBackClick = () => {
+        // Using navigate with previous state to prevent page reload
         if (previousState.previousPage) {
-            navigate(previousState.previousPage, { state: previousState });
+            navigate(previousState.previousPage, {
+                state: {
+                    searchTerm: previousState.searchTerm, // Retain search term
+                    pagination: previousState.pagination, // Retain pagination
+                    selectedNPI: previousState.selectedNPI // Retain the NPI of the selected result
+                }
+            });
         } else {
-            navigate("/"); // Default fallback
+            navigate("/");  // Default fallback to home page
         }
     };
 

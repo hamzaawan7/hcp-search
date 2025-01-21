@@ -1,6 +1,8 @@
 const express = require("express");
 const sql = require("mssql");
 const cors = require("cors"); 
+const stringSimilarity = require("string-similarity");
+
 
 const app = express();
 app.use(
@@ -44,7 +46,7 @@ app.get("/", (req, res) => {
 
 app.get("/search/direct", async (req, res) => {
     const searchTerm = req.query.term;
-    const practice_city = req.query.city;
+    const city = req.query.city;
     const country = req.query.country; // Get country filter from request
     const page = parseInt(req.query.page, 10) || 1; // Default to page 1
     const limit = 5;  // Default to 10 results per page
@@ -63,14 +65,9 @@ app.get("/search/direct", async (req, res) => {
         let baseCondition = `
             WHERE (HCP_first_name = @searchTerm
                 OR HCP_last_name = @searchTerm
-                OR practice_address = @searchTerm)
+                OR practice_address = @searchTerm
+                OR practice_city = @searchTerm)
         `;
-
-        // Add `practice_city` filter if provided
-        if (practice_city && practice_city !== "All") {
-            baseCondition += ` AND practice_city = @practice_city`;
-            request.input("practice_city", sql.NVarChar, practice_city);
-        }
 
         // Add `practice_country` filter if provided
         if (country && country !== "All") {
@@ -252,7 +249,7 @@ app.get("/search/smart/exact", async (req, res) => {
         const offset = (page - 1) * limit;
 
         // Exact match query with pagination
-        const exactQuery = `
+        const exactQuery =` 
             SELECT *
             FROM (
                 SELECT ROW_NUMBER() OVER (ORDER BY HCP_last_name) AS row_num, *
@@ -263,7 +260,7 @@ app.get("/search/smart/exact", async (req, res) => {
         `;
 
         // Count query for pagination
-        const countQuery = `
+        const countQuery =` 
             SELECT COUNT(*) AS totalRecords
             FROM hcp_search_20250106
             WHERE HCP_first_name = @term OR HCP_last_name = @term OR country = @term;
@@ -299,11 +296,12 @@ app.get("/search/smart/exact", async (req, res) => {
 });
 
 
+
 app.get("/search/smart/suggested", async (req, res) => {
-    const searchTerm = req.query.term || "";
+    const searchTerm = req.query.term;
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = (page - 1) * limit;
+    
 
     if (!searchTerm) {
         return res.status(400).send({ error: "Search term is required." });
@@ -314,12 +312,8 @@ app.get("/search/smart/suggested", async (req, res) => {
 
     try {
         const request = new sql.Request();
+        const offset = (page - 1) * limit;
 
-        // Prepare the search term for the LIKE query
-        const sanitizedTerm = `%${searchTerm}%`;
-
-        // Debugging: Log the sanitized term
-        console.log("Sanitized term for LIKE query:", sanitizedTerm);
 
         // Suggested match query with pagination
         const suggestedQuery = `
@@ -347,12 +341,12 @@ app.get("/search/smart/suggested", async (req, res) => {
 
 
         // Add parameters for the search term and pagination
-        request.input("term", sql.NVarChar, sanitizedTerm);
+        request.input("term", sql.NVarChar, searchTerm);
         request.input("offset", sql.Int, offset);
         request.input("limit", sql.Int, limit);
 
         // Execute both queries
-        const [suggestedResult, countResult] = await Promise.all([
+        const [result, countResult] = await Promise.all([
             request.query(suggestedQuery),
             request.query(countQuery),
         ]);
@@ -361,13 +355,9 @@ app.get("/search/smart/suggested", async (req, res) => {
         const totalRecords = countResult.recordset[0]?.totalRecords || 0;
         const totalPages = Math.ceil(totalRecords / limit);
 
-        // Debugging: Log the results and pagination
-        console.log("Suggested Result:", suggestedResult.recordset);
-        console.log("Total Records:", totalRecords);
-
         // Return the results with pagination information
-        return res.json({
-            results: suggestedResult.recordset,
+        res.json({
+            results: result.recordset,
             pagination: {
                 totalRecords,
                 currentPage: page,
@@ -377,8 +367,7 @@ app.get("/search/smart/suggested", async (req, res) => {
         });
     } catch (err) {
         // Debugging: Log the error details
-        console.error("Error in suggested API:", err.message);
-        console.error(err.stack);
+        console.error("Error in suggested API:", err);
         res.status(500).send({ error: "An error occurred while fetching suggested matches." });
     }
 });
