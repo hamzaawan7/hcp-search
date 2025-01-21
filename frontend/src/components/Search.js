@@ -78,6 +78,7 @@ const Search = () => {
                 const suggestedResponse = await axios.get("http://localhost:5000/search/smart/suggested", { params });
                 setSuggested(suggestedResponse.data.results || []);
                 setSuggestedPagination(suggestedResponse.data.pagination || {});
+                
             } else if (searchType === "multiple") {
                 response = await axios.get("http://localhost:5000/search/multiple", { params });
                 setResults(response.data.results || []);

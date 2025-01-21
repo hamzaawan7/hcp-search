@@ -1,7 +1,6 @@
 const express = require("express");
 const sql = require("mssql");
 const cors = require("cors"); 
-const stringSimilarity = require("string-similarity");
 
 
 const app = express();
@@ -295,8 +294,6 @@ app.get("/search/smart/exact", async (req, res) => {
     }
 });
 
-
-
 app.get("/search/smart/suggested", async (req, res) => {
     const searchTerm = req.query.term;
     const page = parseInt(req.query.page, 10) || 1;
@@ -321,7 +318,7 @@ app.get("/search/smart/suggested", async (req, res) => {
             FROM (
                 SELECT ROW_NUMBER() OVER (ORDER BY HCP_last_name) AS row_num, *
                 FROM hcp_search_20250106
-                WHERE practice_city = @term OR practice_st = @term OR practice_address = @term
+                WHERE practice_city LIKE @term OR practice_st LIKE @term OR practice_address = @term
 
             ) AS paginated
             WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
@@ -371,7 +368,6 @@ app.get("/search/smart/suggested", async (req, res) => {
         res.status(500).send({ error: "An error occurred while fetching suggested matches." });
     }
 });
-
 
 
 
