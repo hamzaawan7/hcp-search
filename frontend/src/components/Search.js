@@ -159,7 +159,7 @@ const Search = () => {
                 </button>
                 <button
                     className={`search-type-button ${searchType === "direct" ? "active" : ""}`}
-                    onClick={() => setSearchType("smart")}
+                    onClick={() => setSearchType("direct")}
                     disabled={loading}
                 >
                     Direct Search

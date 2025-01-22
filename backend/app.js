@@ -398,7 +398,7 @@ app.get("/search/smart/fuzzy", async (req, res) => {
                 SELECT *
                 FROM hcp_search_20250106
                 WHERE 
-                    CHARINDEX(@searchTerm, practice_address) > 0 OR
+                    CHARINDEX(@term, practice_address) > 0 OR
                     SOUNDEX(practice_city) = SOUNDEX(@term) OR
                     SOUNDEX(practice_st) = SOUNDEX(@term);
 
