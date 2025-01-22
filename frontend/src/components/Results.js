@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom"; // Import Link for navigation
+import { Link } from "react-router-dom";
 import "./Results.css";
 
 const Results = ({
@@ -7,13 +7,16 @@ const Results = ({
     results = [],
     exact = [],
     suggested = [],
+    fuzzy = [], // Added fuzzy results
     searchTerm = "",
     pagination = {},
     onPageChange,
     exactPagination = {},
     onExactPageChange,
     suggestedPagination = {},
-    onSuggestedPageChange
+    onSuggestedPageChange,
+    fuzzyPagination = {}, // Added fuzzy pagination
+    onFuzzyPageChange, // Added fuzzy pagination handler
 }) => {
     // Function to render the table with data
     const renderTable = (data, title) => (
@@ -37,14 +40,18 @@ const Results = ({
                             <td>
                                 {/* Add View button with Link for navigation */}
                                 <Link
-                                    to={`/details/${result.NPI}`}
-                                    state={{
-                                        previousPage: window.location.pathname, // Save current page
-                                        searchTerm, // Pass the search term
-                                        pagination, // Pass pagination info
-                                        selectedNPI: result.NPI, // Pass selected NPI
-                                    }}
-                                >
+                                to={`/details/${result.NPI}`}
+                                state={{
+                                    previousPage: window.location.pathname, // Current page path
+                                    searchTerm, // Pass the current search term
+                                    pagination, // Pass current pagination state
+                                    exact, // Pass exact matches if available
+                                    suggested, // Pass suggested matches if available
+                                    fuzzy, // Pass fuzzy matches if available
+                                    results, // Pass the current search results
+                                    currentPage: pagination.currentPage || 1, // Pass the current page
+                                }}
+                            >
                                     <button className="view-button">View</button>
                                 </Link>
                             </td>
@@ -125,7 +132,18 @@ const Results = ({
                         </>
                     )}
 
-                    {exact.length === 0 && suggested.length === 0 && (
+                    {fuzzy.length > 0 && (
+                        <>
+                            {renderTable(fuzzy, "Fuzzy Match")} {/* Render fuzzy matches */}
+                            {renderPaginationControls(
+                                fuzzyPagination.currentPage || 1,
+                                fuzzyPagination.totalPages || 1,
+                                onFuzzyPageChange
+                            )}
+                        </>
+                    )}
+
+                    {exact.length === 0 && suggested.length === 0 && fuzzy.length === 0 && (
                         <p>No results found for "{searchTerm}".</p>
                     )}
                 </>

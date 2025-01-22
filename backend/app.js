@@ -1,6 +1,7 @@
 const express = require("express");
 const sql = require("mssql");
-const cors = require("cors"); 
+const cors = require("cors");
+
 
 
 const app = express();
@@ -45,7 +46,6 @@ app.get("/", (req, res) => {
 
 app.get("/search/direct", async (req, res) => {
     const searchTerm = req.query.term;
-    const city = req.query.city;
     const country = req.query.country; // Get country filter from request
     const page = parseInt(req.query.page, 10) || 1; // Default to page 1
     const limit = 5;  // Default to 10 results per page
@@ -198,10 +198,7 @@ app.get("/search/multiple", async (req, res) => {
             WHERE NPI IN (${NPIs.map((_, index) => `@NPI${index}`).join(",")})
         `;
 
-        // Add city filter if provided
-        if (practiceCity && practiceCity !== "All") {
-            query += ` AND practice_city = @practiceCity`;
-        }
+        // Add `practice_country` filter if provided
         if (country && country !== "All") {
             baseCondition += ` AND country = @country`;
             request.input("country", sql.NVarChar, country);
@@ -214,11 +211,6 @@ app.get("/search/multiple", async (req, res) => {
         NPIs.forEach((NPI, index) => {
             request.input(`NPI${index}`, sql.Int, parseInt(NPI, 10));
         });
-
-        // Add the city parameter if specified
-        if (practiceCity && practiceCity !== "All") {
-            request.input("practiceCity", sql.NVarChar, practiceCity);
-        }
 
         // Execute the query
         const result = await request.query(query);
@@ -236,6 +228,7 @@ app.get("/search/multiple", async (req, res) => {
 
 app.get("/search/smart/exact", async (req, res) => {
     const searchTerm = req.query.term;
+    const country = req.query.country; // Get country filter from request
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
 
@@ -257,6 +250,12 @@ app.get("/search/smart/exact", async (req, res) => {
             ) AS paginated
             WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
         `;
+
+                // Add `practice_country` filter if provided
+        if (country && country !== "All") {
+            baseCondition += ` AND country = @country`;
+            request.input("country", sql.NVarChar, country);
+        }
 
         // Count query for pagination
         const countQuery =` 
@@ -294,10 +293,13 @@ app.get("/search/smart/exact", async (req, res) => {
     }
 });
 
+
 app.get("/search/smart/suggested", async (req, res) => {
     const searchTerm = req.query.term;
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
+    const country = req.query.country; // Get country filter from request
+
     
 
     if (!searchTerm) {
@@ -324,6 +326,11 @@ app.get("/search/smart/suggested", async (req, res) => {
             WHERE row_num BETWEEN @offset + 1 AND @offset + @limit;
         `;
 
+                // Add `practice_country` filter if provided
+        if (country && country !== "All") {
+            baseCondition += ` AND country = @country`;
+            request.input("country", sql.NVarChar, country);
+        }
 
 
         // Count query to get the total number of matching records
@@ -362,6 +369,7 @@ app.get("/search/smart/suggested", async (req, res) => {
                 pageSize: limit,
             },
         });
+
     } catch (err) {
         // Debugging: Log the error details
         console.error("Error in suggested API:", err);
@@ -369,10 +377,73 @@ app.get("/search/smart/suggested", async (req, res) => {
     }
 });
 
+// Define the fuzzy search route
+app.get("/search/smart/fuzzy", async (req, res) => {
+    const searchTerm = req.query.term;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
 
+    if (!searchTerm) {
+        return res.status(400).send({ error: "Search term is required." });
+    }
 
+    console.log("Search term received (fuzzy search):", searchTerm);
 
+    try {
+        const request = new sql.Request();
+        const offset = (page - 1) * limit;
 
+        // Fuzzy match query with pagination
+        const fuzzyQuery = `
+                SELECT *
+                FROM hcp_search_20250106
+                WHERE 
+                    CHARINDEX(@searchTerm, practice_address) > 0 OR
+                    SOUNDEX(practice_city) = SOUNDEX(@term) OR
+                    SOUNDEX(practice_st) = SOUNDEX(@term);
+
+        `;
+
+        // Count query to get total matching records
+        const countQuery = `
+            SELECT COUNT(*) AS totalRecords
+            FROM hcp_search_20250106
+            WHERE 
+                practice_city LIKE '%' + @term + '%' OR
+                practice_st LIKE '%' + @term + '%' OR
+                practice_address LIKE '%' + @term + '%';
+        `;
+
+        // Add parameters for the search term and pagination
+        request.input("term", sql.NVarChar, searchTerm);
+        request.input("offset", sql.Int, offset);
+        request.input("limit", sql.Int, limit);
+
+        // Execute the queries
+        const [result, countResult] = await Promise.all([
+            request.query(fuzzyQuery),
+            request.query(countQuery),
+        ]);
+
+        // Get total records and calculate total pages
+        const totalRecords = countResult.recordset[0]?.totalRecords || 0;
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        // Return the results with pagination info
+        res.json({
+            results: result.recordset,
+            pagination: {
+                totalRecords,
+                currentPage: page,
+                totalPages,
+                pageSize: limit,
+            },
+        });
+    } catch (err) {
+        console.error("Error in fuzzy search API:", err);
+        res.status(500).send({ error: "An error occurred while performing the fuzzy search." });
+    }
+});
 
 
 

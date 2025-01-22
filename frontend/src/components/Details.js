@@ -5,19 +5,20 @@ import "./Details.css";
 
 const Details = () => {
     const navigate = useNavigate();
-    const { npi } = useParams();  // Getting NPI from the URL
+    const { npi } = useParams(); // Get NPI from the URL
     const location = useLocation();
-    const previousState = location.state || {};  // Get previous state (previous page, search term, pagination)
+    const previousState = location.state || {}; // Get previous state
 
     const [record, setRecord] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    // Fetch details for the specific NPI
     useEffect(() => {
         const fetchDetail = async () => {
             try {
                 const response = await axios.get(`http://localhost:5000/search/direct/detail/${npi}`);
-                setRecord(response.data);  // Populate record with data
+                setRecord(response.data); // Populate record with fetched data
             } catch (err) {
                 setError("Failed to load details.");
             } finally {
@@ -26,7 +27,7 @@ const Details = () => {
         };
 
         if (npi) {
-            fetchDetail();  // Fetch details based on NPI
+            fetchDetail();
         } else {
             setError("No valid NPI provided.");
             setLoading(false);
@@ -34,19 +35,24 @@ const Details = () => {
     }, [npi]);
 
     const handleBackClick = () => {
-        // Using navigate with previous state to prevent page reload
-        if (previousState.previousPage) {
-            navigate(previousState.previousPage, {
-                state: {
-                    searchTerm: previousState.searchTerm, // Retain search term
-                    pagination: previousState.pagination, // Retain pagination
-                    selectedNPI: previousState.selectedNPI // Retain the NPI of the selected result
-                }
-            });
-        } else {
-            navigate("/");  // Default fallback to home page
-        }
-    };
+    // Navigate back to the previous page with preserved state
+    if (previousState.previousPage) {
+        navigate(previousState.previousPage, {
+            state: {
+                searchTerm: previousState.searchTerm, // Restore search term
+                pagination: previousState.pagination, // Restore pagination state
+                exact: previousState.exact || [], // Restore exact results
+                suggested: previousState.suggested || [], // Restore suggested results
+                fuzzy: previousState.fuzzy || [], // Restore fuzzy results
+                results: previousState.results || [], // Restore results
+                currentPage: previousState.currentPage || 1, // Restore current page
+            },
+        });
+    } else {
+        navigate("/"); // Default fallback to home page
+    }
+};
+
 
     if (loading) {
         return <div className="loading-message">Loading details...</div>;
@@ -69,12 +75,12 @@ const Details = () => {
             <h3>Details for NPI: {npi}</h3>
             <table className="details-table">
                 <tbody>
-                {Object.entries(record).map(([key, value]) => (
-                    <tr key={key}>
-                        <th>{key.replace(/_/g, " ")}</th>
-                        <td>{value}</td>
-                    </tr>
-                ))}
+                    {Object.entries(record).map(([key, value]) => (
+                        <tr key={key}>
+                            <th>{key.replace(/_/g, " ")}</th>
+                            <td>{value || "N/A"}</td>
+                        </tr>
+                    ))}
                 </tbody>
             </table>
         </div>

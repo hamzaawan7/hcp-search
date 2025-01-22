@@ -7,13 +7,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 const Search = () => {
     const navigate = useNavigate();
-    const location = useLocation(); // To capture the current URL and query params
+    const location = useLocation();
     const [searchType, setSearchType] = useState("direct");
     const [searchTerm, setSearchTerm] = useState("");
     const [country, setCountry] = useState("All");
     const [results, setResults] = useState([]);
     const [exact, setExact] = useState([]);
     const [suggested, setSuggested] = useState([]);
+    const [fuzzy, setFuzzy] = useState([]); // State for fuzzy results
     const [pagination, setPagination] = useState({
         currentPage: 1,
         totalPages: 1,
@@ -32,64 +33,93 @@ const Search = () => {
         totalRecords: 0,
         pageSize: 5,
     });
-    const [loading, setLoading] = useState(false); // Flag to track the loading status
+    const [fuzzyPagination, setFuzzyPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: 0,
+        pageSize: 5,
+    });
+    const [loading, setLoading] = useState(false);
 
-    // Use location to track the URL parameters
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
-        const querySearchType = queryParams.get("type") || "direct";
+        const querySearchType = queryParams.get("type") || "smart";
         const querySearchTerm = queryParams.get("term") || "";
         const queryCountry = queryParams.get("country") || "All";
-
+    
         setSearchType(querySearchType);
         setSearchTerm(querySearchTerm);
         setCountry(queryCountry);
-
-        if (querySearchTerm) {
+    
+        // Restore results if state is available
+        if (location.state) {
+            const {
+                results = [],
+                exact = [],
+                suggested = [],
+                fuzzy = [],
+                pagination = { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 5 },
+                exactPagination = { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 5 },
+                suggestedPagination = { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 5 },
+                fuzzyPagination = { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 5 },
+            } = location.state;
+    
+            setResults(results);
+            setExact(exact);
+            setSuggested(suggested);
+            setFuzzy(fuzzy);
+            setPagination(pagination);
+            setExactPagination(exactPagination);
+            setSuggestedPagination(suggestedPagination);
+            setFuzzyPagination(fuzzyPagination);
+        } else if (querySearchTerm) {
+            // Perform a fresh search if no state is available
             handleSearch(1);
         }
     }, [location]);
-
-    // Updated handleSearch function with loading flag
     const handleSearch = async (page = 1, limit = 5) => {
-        if (loading) return; // Prevent multiple requests if a request is already in progress
-
+        if (loading) return;
         setLoading(true);
         try {
             const params = { term: searchTerm, country, page, limit };
-            let response;
-
-            // Update the URL dynamically with search params
             const newUrl = `?type=${searchType}&term=${searchTerm}&country=${country}`;
             navigate(newUrl, { replace: true });
 
-            if (searchType === "direct") {
-                response = await axios.get("http://localhost:5000/search/direct", { params });
-                setResults(response.data.results || []);
-                setPagination(response.data.pagination || {});
-                setExact([]);
-                setSuggested([]);
-            } else if (searchType === "smart") {
+            if (searchType === "smart") {
                 // Fetch exact matches
                 const exactResponse = await axios.get("http://localhost:5000/search/smart/exact", { params });
                 setExact(exactResponse.data.results || []);
                 setExactPagination(exactResponse.data.pagination || {});
 
+                // Fetch suggested matches
                 const suggestedResponse = await axios.get("http://localhost:5000/search/smart/suggested", { params });
                 setSuggested(suggestedResponse.data.results || []);
                 setSuggestedPagination(suggestedResponse.data.pagination || {});
-                
-            } else if (searchType === "multiple") {
-                response = await axios.get("http://localhost:5000/search/multiple", { params });
+
+                // Fetch fuzzy matches
+                const fuzzyResponse = await axios.get("http://localhost:5000/search/smart/fuzzy", { params });
+                setFuzzy(fuzzyResponse.data.results || []);
+                setFuzzyPagination(fuzzyResponse.data.pagination || {});
+
+            } else if (searchType === "direct") {
+                const response = await axios.get("http://localhost:5000/search/direct", { params });
                 setResults(response.data.results || []);
                 setPagination(response.data.pagination || {});
                 setExact([]);
                 setSuggested([]);
+                setFuzzy([]);
+            } else if (searchType === "multiple") {
+                const response = await axios.get("http://localhost:5000/search/multiple", { params });
+                setResults(response.data.results || []);
+                setPagination(response.data.pagination || {});
+                setExact([]);
+                setSuggested([]);
+                setFuzzy([]);
             }
         } catch (err) {
             console.error(`Error fetching ${searchType} search results:`, err);
         } finally {
-            setLoading(false); // Reset the loading flag after the request is complete
+            setLoading(false);
         }
     };
 
@@ -111,27 +141,33 @@ const Search = () => {
         }
     };
 
+    const handleFuzzyPageChange = (newPage) => {
+        if (newPage > 0 && newPage <= fuzzyPagination.totalPages) {
+            handleSearch(newPage, fuzzyPagination.pageSize);
+        }
+    };
+
     return (
         <div className="search-bar">
             <div className="search-controls">
                 <button
-                    className={`search-type-button ${searchType === "direct" ? "active" : ""}`}
-                    onClick={() => setSearchType("direct")}
-                    disabled={loading} // Disable button when loading
-                >
-                    Direct Search
-                </button>
-                <button
                     className={`search-type-button ${searchType === "smart" ? "active" : ""}`}
                     onClick={() => setSearchType("smart")}
-                    disabled={loading} // Disable button when loading
+                    disabled={loading}
                 >
                     Smart Search
                 </button>
                 <button
+                    className={`search-type-button ${searchType === "direct" ? "active" : ""}`}
+                    onClick={() => setSearchType("smart")}
+                    disabled={loading}
+                >
+                    Direct Search
+                </button>
+                <button
                     className={`search-type-button ${searchType === "multiple" ? "active" : ""}`}
                     onClick={() => setSearchType("multiple")}
-                    disabled={loading} // Disable button when loading
+                    disabled={loading}
                 >
                     Multiple Search
                 </button>
@@ -143,7 +179,7 @@ const Search = () => {
                     placeholder="Enter search term"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    disabled={loading} // Disable input when loading
+                    disabled={loading}
                 />
                 <select value={country} onChange={(e) => setCountry(e.target.value)} disabled={loading}>
                     <option value="All">All</option>
@@ -156,7 +192,7 @@ const Search = () => {
                 </select>
                 <button
                     onClick={() => handleSearch(1)}
-                    disabled={loading} // Disable button when loading
+                    disabled={loading}
                 >
                     Search
                 </button>
@@ -172,13 +208,16 @@ const Search = () => {
                     results={results}
                     exact={exact}
                     suggested={suggested}
+                    fuzzy={fuzzy}
                     searchTerm={searchTerm}
                     pagination={pagination}
                     exactPagination={exactPagination}
                     suggestedPagination={suggestedPagination}
+                    fuzzyPagination={fuzzyPagination}
                     onPageChange={handlePageChange}
                     onExactPageChange={handleExactPageChange}
                     onSuggestedPageChange={handleSuggestedPageChange}
+                    onFuzzyPageChange={handleFuzzyPageChange}
                 />
             )}
         </div>
