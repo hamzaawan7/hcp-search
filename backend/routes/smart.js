@@ -56,7 +56,8 @@ router.get("/exact", (req, res) => {
     .filter(
       (item) =>
         (item.HCP_first_name && item.HCP_first_name.toLowerCase() === lowerCaseTerm) ||
-        (item.HCP_last_name && item.HCP_last_name.toLowerCase() === lowerCaseTerm)
+        (item.HCP_last_name && item.HCP_last_name.toLowerCase() === lowerCaseTerm) ||
+        (item.practice_city && item.practice_city.toLowerCase() === lowerCaseTerm) 
     )
     .map((result) => ({ ...result, matchType: "exact" })); // Add match type
 
@@ -77,7 +78,7 @@ router.get("/suggested", (req, res) => {
 
   // Perform fuzzy search using Fuse.js
   const options = {
-    keys: ["practice_city", "practice_st", "HCP_first_name", "HCP_last_name"], // Fields to search for suggested matches
+    keys: ["practice_st", "HCP_first_name", "HCP_last_name"], // Fields to search for suggested matches
     threshold: 0.4, // Sensitivity for fuzzy matching
     distance: 100,
     includeScore: true,
