@@ -1,7 +1,6 @@
 {
   "name": "hcp-search-backend",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -25,7 +24,9 @@
     "levenshtein": "^1.0.5",
     "mssql": "^11.0.1",
     "natural": "^8.0.1",
+    "node-cron": "^3.0.3",
     "string-similarity": "^4.0.4",
     "xlsx": "^0.18.5"
-  }
+  },
+  "description": ""
 }
