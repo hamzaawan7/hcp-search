@@ -1,7 +1,6 @@
 
 /* General container */
 .direct-search-container {
-  /* background-image: url("/frontend/public/images/bg.jpg"); */
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center center;
@@ -41,6 +40,7 @@
     padding: 0; /* Ensures no extra padding around the buttons */
     margin: 0 auto; /* Centers it horizontally */
     width: fit-content; /* Ensures no extra white space */
+    opacity: 70%;
   }
   
   .language-button {
@@ -92,6 +92,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+    opacity: 75%;
   }
   
   .search-form:hover {
@@ -179,6 +180,7 @@
     overflow: hidden;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     margin-top: 20px;
+    background-color: white;
   }
   
   .results-table th,

@@ -9,7 +9,7 @@ const Search = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [searchType, setSearchType] = useState("smart");
+  const [searchType, setSearchType] = useState("direct");
   const [searchTerm, setSearchTerm] = useState("");
   const [country, setCountry] = useState("All");
 
@@ -42,7 +42,7 @@ const Search = () => {
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
-    const querySearchType = queryParams.get("type") || "smart";
+    const querySearchType = queryParams.get("type") || "direct";
     const querySearchTerm = queryParams.get("term") || "";
     const queryCountry = queryParams.get("country") || "All";
 
@@ -133,13 +133,6 @@ const Search = () => {
   return (
     <div className="search-bar">
       <div className="search-controls">
-        <button
-          className={`search-type-button ${searchType === "smart" ? "active" : ""}`}
-          onClick={() => setSearchType("smart")}
-          disabled={loading}
-        >
-          Smart Search
-        </button>
         <button
           className={`search-type-button ${searchType === "direct" ? "active" : ""}`}
           onClick={() => {
