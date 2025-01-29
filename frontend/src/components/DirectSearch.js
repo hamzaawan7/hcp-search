@@ -16,7 +16,8 @@ const DirectSearchPage = () => {
   const [results, setResults] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [exactMatches, setExactMatches] = useState([]); // Separate exact matches
-  
+  const [country, setCountry] = useState("US");
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -1410,7 +1411,7 @@ const DirectSearchPage = () => {
         setExactMatches(data.exactMatches); // Exact match results
         setResults(data.suggestedMatches); // Suggested match results
       } else {
-        setResults(data.results);
+        setResults(data.results?.filter(item => item.Country === country) || []);
         setExactMatches([]); // No exact matches for direct search
       }
 
@@ -1420,6 +1421,11 @@ const DirectSearchPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCountryChange = (selectedCountry) => {
+    setCountry(selectedCountry);
+    handleSearch(1); // Re-trigger search when country changes
   };
 
   const handleView = async (record, index) => {
@@ -1468,16 +1474,28 @@ const DirectSearchPage = () => {
         <h1>Direct Search</h1>
       </header>
       <div className="language-selection">
-        <button className="language-button">
+        <button
+          className={`language-button ${country === "US" ? "active" : ""}`}
+          onClick={() => handleCountryChange("US")}
+        >
           <img src="/images/US.png" alt="US Flag" /> US
         </button>
-        <button className="language-button">
+        <button
+          className={`language-button ${country === "Italy" ? "active" : ""}`}
+          onClick={() => handleCountryChange("Italy")}
+        >
           <img src="/images/italy.png" alt="Italy Flag" /> Italy
         </button>
-        <button className="language-button">
+        <button
+          className={`language-button ${country === "Korea" ? "active" : ""}`}
+          onClick={() => handleCountryChange("Korea")}
+        >
           <img src="/images/south-korea.png" alt="Korea Flag" /> Korea
         </button>
-        <button className="language-button">
+        <button
+          className={`language-button ${country === "Denmark" ? "active" : ""}`}
+          onClick={() => handleCountryChange("Denmark")}
+        >
           <img src="/images/denmark.png" alt="Denmark Flag" /> Denmark
         </button>
       </div>
@@ -1683,7 +1701,7 @@ const DirectSearchPage = () => {
           </table>
         </div>
       )}
-      
+
       <div>
         {aiMatching && <h2>Suggested Matches</h2>}{" "}
         <table className="results-table">
