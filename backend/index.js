@@ -20,7 +20,7 @@ app.get("/job/start", async (req, res) => {
 
   try {
     console.log("Manual job started...");
-    await fetchAndIndexData(100, 120000); // Fetch 100 rows per batch, run for 2 minutes
+    await fetchAndIndexData(100, 120000); 
     console.log("Manual job completed successfully.");
     res.status(200).json({ message: "Job completed successfully.", status: jobStatus });
   } catch (err) {
@@ -31,9 +31,9 @@ app.get("/job/start", async (req, res) => {
 
 // Register the route to view all data from the JSON file
 app.use("/data", allDataRoutes);
-app.use("/search/smart", smartRoutes);  // Use the smart routes for any `/search/smart` request
-app.use("/search", directRoutes);  // Use the direct routes for any `/search/direct` request
-app.use("/search", multipleRoutes);  // Use the multiple routes for any `/search/multiple` request
+app.use("/search/smart", smartRoutes);
+app.use("/search", directRoutes);  
+app.use("/search", multipleRoutes);
 
 // Default route
 app.get("/", (req, res) => {
@@ -56,7 +56,7 @@ cron.schedule("*/2 * * * *", async () => {
 
   console.log("Scheduled job started...");
   try {
-    await fetchAndIndexData(500,  600000); // Fetch 100 rows per batch, run for 2 minutes
+    await fetchAndIndexData(500,  600000); 
     console.log("Scheduled job completed successfully.");
   } catch (err) {
     console.error("Error during scheduled job execution:", err);
@@ -67,7 +67,7 @@ cron.schedule("*/2 * * * *", async () => {
 (async () => {
   try {
     console.log("Server startup: Fetching initial data...");
-    await fetchAndIndexData(5000,  600000); 
+    await fetchAndIndexData(500,  600000); 
     console.log("Initial data fetch completed successfully.");
   } catch (err) {
     console.error("Error during initial data fetch:", err);

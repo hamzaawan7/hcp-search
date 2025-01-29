@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import axios from "axios";
-import "../components/DirectSearch.css";
+import "./DirectSearch.css";
 
 const DirectSearchPage = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    address: "",
     npi: "",
     specialty: "",
     state: "",
@@ -14,6 +15,8 @@ const DirectSearchPage = () => {
 
   const [results, setResults] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [exactMatches, setExactMatches] = useState([]); // Separate exact matches
+  
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -24,57 +27,618 @@ const DirectSearchPage = () => {
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [popupRowIndex, setPopupRowIndex] = useState(null);
+  const [aiMatching, setAiMatching] = useState(false);
 
   const stateCities = {
-    AL:  ["Birmingham", "Montgomery", "Mobile", "Huntsville", "Tuscaloosa", "Hoover", "Dothan", "Decatur", "Auburn", "Gadsden", "Florence", "Vestavia Hills", "Phenix City", "Prattville", "Alabaster", "Bessemer", "Enterprise", "Opelika", "Homewood", "Madison", "Anniston", "Selma", "Mountain Brook", "Pelham", "Trussville", "Helena", "Fairhope", "Oxford", "Cullman", "Foley"],
-    AK: ["Anchorage", "Fairbanks", "Juneau", "Wasilla", "Sitka", "Ketchikan", "Kenai", "Kodiak", "Bethel", "Palmer"],
-    AZ: ["Phoenix", "Tucson", "Mesa", "Chandler", "Scottsdale", "Glendale", "Gilbert", "Tempe", "Peoria", "Surprise"],
-    AR: ["Little Rock", "Fort Smith", "Fayetteville", "Springdale", "Jonesboro", "North Little Rock", "Conway", "Rogers", "Pine Bluff", "Bentonville"],
-    CA: ["Los Angeles", "San Diego", "San Jose", "San Francisco", "Fresno", "Sacramento", "Long Beach", "Oakland", "Bakersfield", "Anaheim"],
-    CO: ["Denver", "Colorado Springs", "Aurora", "Fort Collins", "Lakewood", "Thornton", "Arvada", "Westminster", "Pueblo", "Greeley"],
-    CT: ["Bridgeport", "New Haven", "Stamford", "Hartford", "Waterbury", "Norwalk", "Danbury", "New Britain", "Bristol", "Meriden"],
-    DE: ["Wilmington", "Dover", "Newark", "Middletown", "Smyrna", "Milford", "Seaford", "Georgetown", "Elsmere", "New Castle"],
-    FL: ["Jacksonville", "Miami", "Tampa", "Orlando", "St. Petersburg", "Hialeah", "Tallahassee", "Fort Lauderdale", "Port St. Lucie", "Cape Coral"],
-    GA: ["Atlanta", "Augusta", "Columbus", "Macon", "Savannah", "Athens", "Sandy Springs", "Roswell", "Albany", "Johns Creek"],
-    HI: ["Honolulu", "Hilo", "Kailua", "Kapolei", "Waipahu", "Ewa Beach", "Pearl City", "Kaneohe", "Mililani", "Wahiawa"],
-    ID: ["Boise", "Meridian", "Nampa", "Idaho Falls", "Pocatello", "Caldwell", "Twin Falls", "Lewiston", "Post Falls", "Rexburg"],
-    IL: ["Chicago", "Aurora", "Naperville", "Joliet", "Rockford", "Springfield", "Elgin", "Peoria", "Champaign", "Waukegan"],
-    IN: ["Indianapolis", "Fort Wayne", "Evansville", "South Bend", "Carmel", "Fishers", "Bloomington", "Hammond", "Lafayette", "Gary"],
-    IA: ["Des Moines", "Cedar Rapids", "Davenport", "Sioux City", "Waterloo", "Ames", "West Des Moines", "Dubuque", "Ankeny", "Urbandale"],
-    KS: ["Wichita", "Overland Park", "Kansas City", "Olathe", "Topeka", "Lawrence", "Shawnee", "Manhattan", "Lenexa", "Salina"],
-    KY: ["Louisville", "Lexington", "Bowling Green", "Owensboro", "Covington", "Hopkinsville", "Richmond", "Florence", "Georgetown", "Elizabethtown"],
-    LA: ["New Orleans", "Baton Rouge", "Shreveport", "Lafayette", "Lake Charles", "Bossier City", "Kenner", "Monroe", "Alexandria", "Houma"],
-    ME: ["Portland", "Lewiston", "Bangor", "South Portland", "Auburn", "Biddeford", "Sanford", "Saco", "Westbrook", "Augusta"],
-    MD: ["Baltimore", "Frederick", "Rockville", "Gaithersburg", "Bowie", "Hagerstown", "Annapolis", "College Park", "Salisbury", "Laurel"],
-    MA: ["Boston", "Worcester", "Springfield", "Lowell", "Cambridge", "New Bedford", "Brockton", "Quincy", "Lynn", "Fall River"],
-    MI: ["Detroit", "Grand Rapids", "Warren", "Sterling Heights", "Ann Arbor", "Lansing", "Flint", "Dearborn", "Livonia", "Westland"],
-    MN: ["Minneapolis", "Saint Paul", "Rochester", "Duluth", "Bloomington", "Brooklyn Park", "Plymouth", "Maple Grove", "Woodbury", "Eagan"],
-    MS: ["Jackson", "Gulfport", "Southaven", "Hattiesburg", "Biloxi", "Meridian", "Tupelo", "Olive Branch", "Greenville", "Horn Lake"],
-    MO: ["Kansas City", "Saint Louis", "Springfield", "Independence", "Columbia", "Lee's Summit", "O'Fallon", "Saint Joseph", "Saint Charles", "Blue Springs"],
-    MT: ["Billings", "Missoula", "Great Falls", "Bozeman", "Butte", "Helena", "Kalispell", "Havre", "Anaconda", "Miles City"],
-    NE: ["Omaha", "Lincoln", "Bellevue", "Grand Island", "Kearney", "Fremont", "Hastings", "Norfolk", "North Platte", "Papillion"],
-    NV: ["Las Vegas", "Henderson", "Reno", "North Las Vegas", "Sparks", "Carson City", "Elko", "Fernley", "Mesquite", "Boulder City"],
-    NH: ["Manchester", "Nashua", "Concord", "Derry", "Rochester", "Salem", "Dover", "Merrimack", "Hudson", "Keene"],
-    NJ: ["Newark", "Jersey City", "Paterson", "Elizabeth", "Lakewood", "Edison", "Woodbridge", "Toms River", "Hamilton", "Clifton"],
-    NM: ["Albuquerque", "Las Cruces", "Rio Rancho", "Santa Fe", "Roswell", "Farmington", "Clovis", "Hobbs", "Carlsbad", "Gallup"],
-    NY: ["New York City", "Buffalo", "Rochester", "Yonkers", "Syracuse", "Albany", "New Rochelle", "Mount Vernon", "Schenectady", "Utica"],
-    NC: ["Charlotte", "Raleigh", "Greensboro", "Durham", "Winston-Salem", "Fayetteville", "Cary", "High Point", "Wilmington", "Asheville"],
-    ND: ["Fargo", "Bismarck", "Grand Forks", "Minot", "West Fargo", "Williston", "Dickinson", "Mandan", "Jamestown", "Wahpeton"],
-    OH: ["Columbus", "Cleveland", "Cincinnati", "Toledo", "Akron", "Dayton", "Parma", "Canton", "Youngstown", "Lorain"],
-    OK: ["Oklahoma City", "Tulsa", "Norman", "Broken Arrow", "Edmond", "Lawton", "Moore", "Midwest City", "Stillwater", "Enid"],
-    OR: ["Portland", "Salem", "Eugene", "Gresham", "Hillsboro", "Beaverton", "Bend", "Medford", "Springfield", "Corvallis"],
-    PA: ["Philadelphia", "Pittsburgh", "Allentown", "Erie", "Reading", "Scranton", "Bethlehem", "Lancaster", "Harrisburg", "York"],
-    RI: ["Providence", "Cranston", "Warwick", "Pawtucket", "East Providence", "Woonsocket", "Coventry", "Cumberland", "North Providence", "South Kingstown"],
-    SC: ["Columbia", "Charleston", "North Charleston", "Mount Pleasant", "Rock Hill", "Greenville", "Summerville", "Sumter", "Goose Creek", "Hilton Head Island"],
-    SD: ["Sioux Falls", "Rapid City", "Aberdeen", "Brookings", "Watertown", "Mitchell", "Yankton", "Pierre", "Huron", "Vermillion"],
-    TN: ["Nashville", "Memphis", "Knoxville", "Chattanooga", "Clarksville", "Murfreesboro", "Franklin", "Jackson", "Johnson City", "Bartlett"],    TX: ["Houston", "Austin", "Dallas"],
-    UT: ["Salt Lake City", "West Valley City", "Provo", "West Jordan", "Orem", "Sandy", "Ogden", "St. George", "Layton", "South Jordan"],
-    VT: ["Burlington", "South Burlington", "Rutland", "Essex Junction", "Barre", "Bennington", "Williston", "Montpelier", "Middlebury", "Brattleboro"],
-    VA: ["Virginia Beach", "Norfolk", "Chesapeake", "Richmond", "Newport News", "Alexandria", "Hampton", "Roanoke", "Portsmouth", "Suffolk"],
-    WA: ["Seattle", "Spokane", "Tacoma", "Vancouver", "Bellevue", "Kent", "Everett", "Renton", "Federal Way", "Yakima"],
-    WV: ["Charleston", "Huntington", "Morgantown", "Parkersburg", "Wheeling", "Weirton", "Fairmont", "Beckley", "Martinsburg", "Clarksburg"],
-    WI: ["Milwaukee", "Madison", "Green Bay", "Kenosha", "Racine", "Appleton", "Waukesha", "Eau Claire", "Oshkosh", "Janesville"],
-    WY: ["Cheyenne", "Casper", "Laramie", "Gillette", "Rock Springs", "Sheridan", "Green River", "Evanston", "Riverton", "Jackson"],
+    AL: [
+      "Birmingham",
+      "Montgomery",
+      "Mobile",
+      "Huntsville",
+      "Tuscaloosa",
+      "Hoover",
+      "Dothan",
+      "Decatur",
+      "Auburn",
+      "Gadsden",
+      "Florence",
+      "Vestavia Hills",
+      "Phenix City",
+      "Prattville",
+      "Alabaster",
+      "Bessemer",
+      "Enterprise",
+      "Opelika",
+      "Homewood",
+      "Madison",
+      "Anniston",
+      "Selma",
+      "Mountain Brook",
+      "Pelham",
+      "Trussville",
+      "Helena",
+      "Fairhope",
+      "Oxford",
+      "Cullman",
+      "Foley",
+    ],
+    AK: [
+      "Anchorage",
+      "Fairbanks",
+      "Juneau",
+      "Wasilla",
+      "Sitka",
+      "Ketchikan",
+      "Kenai",
+      "Kodiak",
+      "Bethel",
+      "Palmer",
+    ],
+    AZ: [
+      "Phoenix",
+      "Tucson",
+      "Mesa",
+      "Chandler",
+      "Scottsdale",
+      "Glendale",
+      "Gilbert",
+      "Tempe",
+      "Peoria",
+      "Surprise",
+    ],
+    AR: [
+      "Little Rock",
+      "Fort Smith",
+      "Fayetteville",
+      "Springdale",
+      "Jonesboro",
+      "North Little Rock",
+      "Conway",
+      "Rogers",
+      "Pine Bluff",
+      "Bentonville",
+    ],
+    CA: [
+      "Los Angeles",
+      "San Diego",
+      "San Jose",
+      "San Francisco",
+      "Fresno",
+      "Sacramento",
+      "Long Beach",
+      "Oakland",
+      "Bakersfield",
+      "Anaheim",
+    ],
+    CO: [
+      "Denver",
+      "Colorado Springs",
+      "Aurora",
+      "Fort Collins",
+      "Lakewood",
+      "Thornton",
+      "Arvada",
+      "Westminster",
+      "Pueblo",
+      "Greeley",
+    ],
+    CT: [
+      "Bridgeport",
+      "New Haven",
+      "Stamford",
+      "Hartford",
+      "Waterbury",
+      "Norwalk",
+      "Danbury",
+      "New Britain",
+      "Bristol",
+      "Meriden",
+    ],
+    DE: [
+      "Wilmington",
+      "Dover",
+      "Newark",
+      "Middletown",
+      "Smyrna",
+      "Milford",
+      "Seaford",
+      "Georgetown",
+      "Elsmere",
+      "New Castle",
+    ],
+    FL: [
+      "Jacksonville",
+      "Miami",
+      "Tampa",
+      "Orlando",
+      "St. Petersburg",
+      "Hialeah",
+      "Tallahassee",
+      "Fort Lauderdale",
+      "Port St. Lucie",
+      "Cape Coral",
+    ],
+    GA: [
+      "Atlanta",
+      "Augusta",
+      "Columbus",
+      "Macon",
+      "Savannah",
+      "Athens",
+      "Sandy Springs",
+      "Roswell",
+      "Albany",
+      "Johns Creek",
+    ],
+    HI: [
+      "Honolulu",
+      "Hilo",
+      "Kailua",
+      "Kapolei",
+      "Waipahu",
+      "Ewa Beach",
+      "Pearl City",
+      "Kaneohe",
+      "Mililani",
+      "Wahiawa",
+    ],
+    ID: [
+      "Boise",
+      "Meridian",
+      "Nampa",
+      "Idaho Falls",
+      "Pocatello",
+      "Caldwell",
+      "Twin Falls",
+      "Lewiston",
+      "Post Falls",
+      "Rexburg",
+    ],
+    IL: [
+      "Chicago",
+      "Aurora",
+      "Naperville",
+      "Joliet",
+      "Rockford",
+      "Springfield",
+      "Elgin",
+      "Peoria",
+      "Champaign",
+      "Waukegan",
+    ],
+    IN: [
+      "Indianapolis",
+      "Fort Wayne",
+      "Evansville",
+      "South Bend",
+      "Carmel",
+      "Fishers",
+      "Bloomington",
+      "Hammond",
+      "Lafayette",
+      "Gary",
+    ],
+    IA: [
+      "Des Moines",
+      "Cedar Rapids",
+      "Davenport",
+      "Sioux City",
+      "Waterloo",
+      "Ames",
+      "West Des Moines",
+      "Dubuque",
+      "Ankeny",
+      "Urbandale",
+    ],
+    KS: [
+      "Wichita",
+      "Overland Park",
+      "Kansas City",
+      "Olathe",
+      "Topeka",
+      "Lawrence",
+      "Shawnee",
+      "Manhattan",
+      "Lenexa",
+      "Salina",
+    ],
+    KY: [
+      "Louisville",
+      "Lexington",
+      "Bowling Green",
+      "Owensboro",
+      "Covington",
+      "Hopkinsville",
+      "Richmond",
+      "Florence",
+      "Georgetown",
+      "Elizabethtown",
+    ],
+    LA: [
+      "New Orleans",
+      "Baton Rouge",
+      "Shreveport",
+      "Lafayette",
+      "Lake Charles",
+      "Bossier City",
+      "Kenner",
+      "Monroe",
+      "Alexandria",
+      "Houma",
+    ],
+    ME: [
+      "Portland",
+      "Lewiston",
+      "Bangor",
+      "South Portland",
+      "Auburn",
+      "Biddeford",
+      "Sanford",
+      "Saco",
+      "Westbrook",
+      "Augusta",
+    ],
+    MD: [
+      "Baltimore",
+      "Frederick",
+      "Rockville",
+      "Gaithersburg",
+      "Bowie",
+      "Hagerstown",
+      "Annapolis",
+      "College Park",
+      "Salisbury",
+      "Laurel",
+    ],
+    MA: [
+      "Boston",
+      "Worcester",
+      "Springfield",
+      "Lowell",
+      "Cambridge",
+      "New Bedford",
+      "Brockton",
+      "Quincy",
+      "Lynn",
+      "Fall River",
+    ],
+    MI: [
+      "Detroit",
+      "Grand Rapids",
+      "Warren",
+      "Sterling Heights",
+      "Ann Arbor",
+      "Lansing",
+      "Flint",
+      "Dearborn",
+      "Livonia",
+      "Westland",
+    ],
+    MN: [
+      "Minneapolis",
+      "Saint Paul",
+      "Rochester",
+      "Duluth",
+      "Bloomington",
+      "Brooklyn Park",
+      "Plymouth",
+      "Maple Grove",
+      "Woodbury",
+      "Eagan",
+    ],
+    MS: [
+      "Jackson",
+      "Gulfport",
+      "Southaven",
+      "Hattiesburg",
+      "Biloxi",
+      "Meridian",
+      "Tupelo",
+      "Olive Branch",
+      "Greenville",
+      "Horn Lake",
+    ],
+    MO: [
+      "Kansas City",
+      "Saint Louis",
+      "Springfield",
+      "Independence",
+      "Columbia",
+      "Lee's Summit",
+      "O'Fallon",
+      "Saint Joseph",
+      "Saint Charles",
+      "Blue Springs",
+    ],
+    MT: [
+      "Billings",
+      "Missoula",
+      "Great Falls",
+      "Bozeman",
+      "Butte",
+      "Helena",
+      "Kalispell",
+      "Havre",
+      "Anaconda",
+      "Miles City",
+    ],
+    NE: [
+      "Omaha",
+      "Lincoln",
+      "Bellevue",
+      "Grand Island",
+      "Kearney",
+      "Fremont",
+      "Hastings",
+      "Norfolk",
+      "North Platte",
+      "Papillion",
+    ],
+    NV: [
+      "Las Vegas",
+      "Henderson",
+      "Reno",
+      "North Las Vegas",
+      "Sparks",
+      "Carson City",
+      "Elko",
+      "Fernley",
+      "Mesquite",
+      "Boulder City",
+    ],
+    NH: [
+      "Manchester",
+      "Nashua",
+      "Concord",
+      "Derry",
+      "Rochester",
+      "Salem",
+      "Dover",
+      "Merrimack",
+      "Hudson",
+      "Keene",
+    ],
+    NJ: [
+      "Newark",
+      "Jersey City",
+      "Paterson",
+      "Elizabeth",
+      "Lakewood",
+      "Edison",
+      "Woodbridge",
+      "Toms River",
+      "Hamilton",
+      "Clifton",
+    ],
+    NM: [
+      "Albuquerque",
+      "Las Cruces",
+      "Rio Rancho",
+      "Santa Fe",
+      "Roswell",
+      "Farmington",
+      "Clovis",
+      "Hobbs",
+      "Carlsbad",
+      "Gallup",
+    ],
+    NY: [
+      "New York City",
+      "Buffalo",
+      "Rochester",
+      "Yonkers",
+      "Syracuse",
+      "Albany",
+      "New Rochelle",
+      "Mount Vernon",
+      "Schenectady",
+      "Utica",
+    ],
+    NC: [
+      "Charlotte",
+      "Raleigh",
+      "Greensboro",
+      "Durham",
+      "Winston-Salem",
+      "Fayetteville",
+      "Cary",
+      "High Point",
+      "Wilmington",
+      "Asheville",
+    ],
+    ND: [
+      "Fargo",
+      "Bismarck",
+      "Grand Forks",
+      "Minot",
+      "West Fargo",
+      "Williston",
+      "Dickinson",
+      "Mandan",
+      "Jamestown",
+      "Wahpeton",
+    ],
+    OH: [
+      "Columbus",
+      "Cleveland",
+      "Cincinnati",
+      "Toledo",
+      "Akron",
+      "Dayton",
+      "Parma",
+      "Canton",
+      "Youngstown",
+      "Lorain",
+    ],
+    OK: [
+      "Oklahoma City",
+      "Tulsa",
+      "Norman",
+      "Broken Arrow",
+      "Edmond",
+      "Lawton",
+      "Moore",
+      "Midwest City",
+      "Stillwater",
+      "Enid",
+    ],
+    OR: [
+      "Portland",
+      "Salem",
+      "Eugene",
+      "Gresham",
+      "Hillsboro",
+      "Beaverton",
+      "Bend",
+      "Medford",
+      "Springfield",
+      "Corvallis",
+    ],
+    PA: [
+      "Philadelphia",
+      "Pittsburgh",
+      "Allentown",
+      "Erie",
+      "Reading",
+      "Scranton",
+      "Bethlehem",
+      "Lancaster",
+      "Harrisburg",
+      "York",
+    ],
+    RI: [
+      "Providence",
+      "Cranston",
+      "Warwick",
+      "Pawtucket",
+      "East Providence",
+      "Woonsocket",
+      "Coventry",
+      "Cumberland",
+      "North Providence",
+      "South Kingstown",
+    ],
+    SC: [
+      "Columbia",
+      "Charleston",
+      "North Charleston",
+      "Mount Pleasant",
+      "Rock Hill",
+      "Greenville",
+      "Summerville",
+      "Sumter",
+      "Goose Creek",
+      "Hilton Head Island",
+    ],
+    SD: [
+      "Sioux Falls",
+      "Rapid City",
+      "Aberdeen",
+      "Brookings",
+      "Watertown",
+      "Mitchell",
+      "Yankton",
+      "Pierre",
+      "Huron",
+      "Vermillion",
+    ],
+    TN: [
+      "Nashville",
+      "Memphis",
+      "Knoxville",
+      "Chattanooga",
+      "Clarksville",
+      "Murfreesboro",
+      "Franklin",
+      "Jackson",
+      "Johnson City",
+      "Bartlett",
+    ],
+    TX: ["Houston", "Austin", "Dallas"],
+    UT: [
+      "Salt Lake City",
+      "West Valley City",
+      "Provo",
+      "West Jordan",
+      "Orem",
+      "Sandy",
+      "Ogden",
+      "St. George",
+      "Layton",
+      "South Jordan",
+    ],
+    VT: [
+      "Burlington",
+      "South Burlington",
+      "Rutland",
+      "Essex Junction",
+      "Barre",
+      "Bennington",
+      "Williston",
+      "Montpelier",
+      "Middlebury",
+      "Brattleboro",
+    ],
+    VA: [
+      "Virginia Beach",
+      "Norfolk",
+      "Chesapeake",
+      "Richmond",
+      "Newport News",
+      "Alexandria",
+      "Hampton",
+      "Roanoke",
+      "Portsmouth",
+      "Suffolk",
+    ],
+    WA: [
+      "Seattle",
+      "Spokane",
+      "Tacoma",
+      "Vancouver",
+      "Bellevue",
+      "Kent",
+      "Everett",
+      "Renton",
+      "Federal Way",
+      "Yakima",
+    ],
+    WV: [
+      "Charleston",
+      "Huntington",
+      "Morgantown",
+      "Parkersburg",
+      "Wheeling",
+      "Weirton",
+      "Fairmont",
+      "Beckley",
+      "Martinsburg",
+      "Clarksburg",
+    ],
+    WI: [
+      "Milwaukee",
+      "Madison",
+      "Green Bay",
+      "Kenosha",
+      "Racine",
+      "Appleton",
+      "Waukesha",
+      "Eau Claire",
+      "Oshkosh",
+      "Janesville",
+    ],
+    WY: [
+      "Cheyenne",
+      "Casper",
+      "Laramie",
+      "Gillette",
+      "Rock Springs",
+      "Sheridan",
+      "Green River",
+      "Evanston",
+      "Riverton",
+      "Jackson",
+    ],
   };
 
   const specialities = [
@@ -799,9 +1363,12 @@ const DirectSearchPage = () => {
     "Women",
     "Women's Health",
     "Women's Health Care, Ambulatory",
-    "Wound Care"
+    "Wound Care",
   ];
 
+  const toggleAiMatching = () => {
+    setAiMatching(!aiMatching);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -815,32 +1382,50 @@ const DirectSearchPage = () => {
   };
 
   const handleSearch = async (page = 1) => {
-  // Check if at least one field is filled
-  const isAnyFieldFilled = Object.values(formData).some((value) => value.trim() !== "");
+    // Filter out empty fields from formData
+    const filteredParams = Object.fromEntries(
+      Object.entries(formData).filter(([_, value]) => value.trim() !== "")
+    );
 
-  if (!isAnyFieldFilled) {
-    alert("Please fill in at least one field before searching."); // Show error message
-    return;
-  }
+    if (Object.keys(filteredParams).length === 0) {
+      alert("Please fill in at least one field before searching.");
+      return;
+    }
 
-  setLoading(true);
-  try {
-    const { data } = await axios.get("http://localhost:5000/search/direct", {
-      params: { ...formData, page, limit: pagination.pageSize },
-    });
-    setResults(data.results);
-    setPagination(data.pagination);
-  } catch (err) {
-    console.error("Error fetching results:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      const endpoint = aiMatching
+        ? "http://localhost:5000/search/smart/suggested"
+        : "http://localhost:5000/search/direct";
+
+      const queryParams = {
+        ...filteredParams, // Send only filled fields
+        page,
+        limit: pagination.pageSize,
+      };
+
+      const { data } = await axios.get(endpoint, { params: queryParams });
+
+      if (aiMatching) {
+        setExactMatches(data.exactMatches); // Exact match results
+        setResults(data.suggestedMatches); // Suggested match results
+      } else {
+        setResults(data.results);
+        setExactMatches([]); // No exact matches for direct search
+      }
+
+      setPagination(data.pagination);
+    } catch (err) {
+      console.error("Error fetching results:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleView = async (record, index) => {
     try {
       if (popupRowIndex === index) {
-        setPopupRowIndex(null); // Toggle off if clicked again
+        setPopupRowIndex(null);
         setSelectedRecord(null);
         return;
       }
@@ -859,6 +1444,7 @@ const DirectSearchPage = () => {
     setFormData({
       firstName: "",
       lastName: "",
+      address: "",
       npi: "",
       specialty: "",
       state: "",
@@ -867,6 +1453,7 @@ const DirectSearchPage = () => {
       residenceCity: "",
     });
     setResults([]);
+    setExactMatches([]);
     setPagination({
       currentPage: 1,
       totalPages: 1,
@@ -875,12 +1462,66 @@ const DirectSearchPage = () => {
     });
   };
 
-
   return (
     <div className="direct-search-container">
       <header className="header">
         <h1>Direct Search</h1>
       </header>
+      <div className="language-selection">
+        <button className="language-button">
+          <img src="/images/US.png" alt="US Flag" /> US
+        </button>
+        <button className="language-button">
+          <img src="/images/italy.png" alt="Italy Flag" /> Italy
+        </button>
+        <button className="language-button">
+          <img src="/images/south-korea.png" alt="Korea Flag" /> Korea
+        </button>
+        <button className="language-button">
+          <img src="/images/denmark.png" alt="Denmark Flag" /> Denmark
+        </button>
+      </div>
+
+      <div
+        className="toggle-container"
+        style={{
+          marginTop: "10px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "15px",
+        }}
+      >
+        <span
+          className="toggle-label"
+          style={{ fontSize: "14px", fontWeight: "bold", color: "#333" }}
+        >
+          ADVANCE AI MATCHING
+        </span>
+        <div
+          className={`toggle-button ${aiMatching ? "active" : ""}`}
+          style={{
+            width: "40px",
+            height: "20px",
+            backgroundColor: aiMatching ? "#1e3a8a" : "gray",
+            borderRadius: "9999px",
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+            transition: "background-color 0.3s ease-in-out",
+            position: "relative",
+          }}
+          onClick={toggleAiMatching}
+        >
+          <div
+            className="toggle-circle"
+            style={{
+              transform: aiMatching ? "translateX(20px)" : "translateX(0)",
+            }}
+          ></div>
+        </div>
+      </div>
+
       {loading && <div className="loader">Loading...</div>}
       <div className="search-form">
         <div className="form-row">
@@ -900,6 +1541,15 @@ const DirectSearchPage = () => {
               value={formData.lastName}
               onChange={handleInputChange}
               placeholder="Enter Last Name"
+            />
+          </div>
+          <div className="form-field">
+            <label>Address</label>
+            <input
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              placeholder="Enter Address"
             />
           </div>
           <div className="form-field">
@@ -985,162 +1635,178 @@ const DirectSearchPage = () => {
         </div>
       </div>
       <div className="actions">
-        <button onClick={() => handleSearch(1)}>Search</button>
-        <button onClick={clearForm}>Clear</button>
+        <button onClick={() => handleSearch(1)}>
+          <img src="/images/search.png" alt="Search" /> Search
+        </button>
+        <button onClick={clearForm}>
+          <img src="/images/clear.png" alt="Clear" />
+          Clear
+        </button>
       </div>
 
-
-      <table className="results-table">
-        <thead>
-          <tr>
-            <th>NPI</th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Country</th>
-            <th>City</th>
-            <th>State</th>
-            <th>Specialty</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {results.map((item, index) => (
-            <>
-              <tr key={item.NPI}>
-                <td>{item.NPI}</td>
-                <td>{item.HCP_first_name}</td>
-                <td>{item.HCP_last_name}</td>
-                <td>{item.Country}</td>
-                <td>{item.practice_city}</td>
-                <td>{item.practice_st}</td>
-                <td>{item.Specialty_1}</td>
-                <td>
-                  <button onClick={() => handleView(item, index)}>View</button>
-                </td>
+      {aiMatching && exactMatches.length > 0 && (
+        <div>
+          <h2>Exact Matches</h2>
+          <table className="results-table">
+            <thead>
+              <tr>
+                <th>NPI</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Address</th>
+                <th>Country</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Specialty</th>
+                <th>Action</th>
               </tr>
-              {popupRowIndex === index && selectedRecord && (
-                <tr className="details-popup">
-                  <td colSpan="14">
-                    <div className="popup-content">
-                      <h3>Details for NPI: {selectedRecord.NPI}</h3>
-                      <p>
-                        <strong>Practice Address:</strong>{" "}
-                        {selectedRecord.practice_address || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Mailing Address:</strong>{" "}
-                        {selectedRecord.mailing_address || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Mailing City:</strong>{" "}
-                        {selectedRecord.mailing_city || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Mailing State:</strong>{" "}
-                        {selectedRecord.mailing_st || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Mailing Postal Code:</strong>{" "}
-                        {selectedRecord.mailing_postal_code || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Specialty 2:</strong>{" "}
-                        {selectedRecord.Specialty_2 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Specialty 3:</strong>{" "}
-                        {selectedRecord.Specialty_3 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>License Number:</strong>{" "}
-                        {selectedRecord.License_Number || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Provider_Credential_Text:</strong>{" "}
-                        {selectedRecord.Provider_Credential_Text || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Provider_Name_Prefix_Text:</strong>{" "}
-                        {selectedRecord.Provider_Name_Prefix_Text || "N/A"}
-                      </p>
-                      <p>
-                        <strong>practice_postal_code:</strong>{" "}
-                        {selectedRecord.practice_postal_code || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Taxonomy_Code:</strong>{" "}
-                        {selectedRecord.Taxonomy_Code || "N/A"}
-                      </p>
-                      <p>
-                        <strong>Provider_License_State:</strong>{" "}
-                        {selectedRecord.Provider_License_State || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_1:</strong>{" "}
-                        {selectedRecord.for_future_use_1 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_2:</strong>{" "}
-                        {selectedRecord.for_future_use_2 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_3:</strong>{" "}
-                        {selectedRecord.for_future_use_3 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_4:</strong>{" "}
-                        {selectedRecord.for_future_use_4 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_5:</strong>{" "}
-                        {selectedRecord.for_future_use_5 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_6:</strong>{" "}
-                        {selectedRecord.for_future_use_6 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_7:</strong>{" "}
-                        {selectedRecord.for_future_use_7 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_8:</strong>{" "}
-                        {selectedRecord.for_future_use_8 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_9:</strong>{" "}
-                        {selectedRecord.for_future_use_9 || "N/A"}
-                      </p>
-                      <p>
-                        <strong>for_future_use_10:</strong>{" "}
-                        {selectedRecord.for_future_use_10 || "N/A"}
-                      </p>
-                    </div>
+            </thead>
+            <tbody>
+              {exactMatches.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.NPI}</td>
+                  <td>{item.HCP_first_name}</td>
+                  <td>{item.HCP_last_name}</td>
+                  <td>{item.practice_address}</td>
+                  <td>{item.Country}</td>
+                  <td>{item.practice_city}</td>
+                  <td>{item.practice_st}</td>
+                  <td>{item.Specialty_1}</td>
+                  <td>
+                    <button onClick={() => handleView(item, index)}>
+                      View
+                    </button>
                   </td>
                 </tr>
-              )}
-            </>
-          ))}
-        </tbody>
-      </table>
-      <div className="pagination-controls">
-          <button
-            disabled={pagination.currentPage === 1}
-            onClick={() => handleSearch(pagination.currentPage - 1)}
-          >
-            Previous
-          </button>
-          <span>
-            Page {pagination.currentPage} of {pagination.totalPages}
-          </span>
-          <button
-            disabled={pagination.currentPage === pagination.totalPages}
-            onClick={() => handleSearch(pagination.currentPage + 1)}
-          >
-            Next
-          </button>
+              ))}
+            </tbody>
+          </table>
         </div>
+      )}
+      
+      <div>
+        {aiMatching && <h2>Suggested Matches</h2>}{" "}
+        <table className="results-table">
+          <thead>
+            <tr>
+              <th>NPI</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Address</th>
+              <th>Country</th>
+              <th>City</th>
+              <th>State</th>
+              <th>Specialty</th>
+              {aiMatching && <th>Similarity</th>} <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {results.map((item, index) => (
+              <>
+                <tr key={item.NPI}>
+                  <td>{item.NPI}</td>
+                  <td>{item.HCP_first_name}</td>
+                  <td>{item.HCP_last_name}</td>
+                  <td>{item.practice_address}</td>
+                  <td>{item.Country}</td>
+                  <td>{item.practice_city}</td>
+                  <td>{item.practice_st}</td>
+                  <td>{item.Specialty_1}</td>
+                  {aiMatching && <td>{item.similarity || "N/A"}</td>}{" "}
+                  <td>
+                    <button onClick={() => handleView(item, index)}>
+                      View
+                    </button>
+                  </td>
+                </tr>
+                {popupRowIndex === index && selectedRecord && (
+                  <tr className="details-popup">
+                    <td colSpan="14">
+                      <div className="popup-content">
+                        <h3>Details for NPI: {selectedRecord.NPI}</h3>
+                        <p>
+                          <strong>Practice Address:</strong>{" "}
+                          {selectedRecord.practice_address || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Mailing Address:</strong>{" "}
+                          {selectedRecord.mailing_address || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Mailing City:</strong>{" "}
+                          {selectedRecord.mailing_city || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Mailing State:</strong>{" "}
+                          {selectedRecord.mailing_st || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Mailing Postal Code:</strong>{" "}
+                          {selectedRecord.mailing_postal_code || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Specialty 1:</strong>{" "}
+                          {selectedRecord.Specialty_2 || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Specialty 2:</strong>{" "}
+                          {selectedRecord.Specialty_2 || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Specialty 3:</strong>{" "}
+                          {selectedRecord.Specialty_3 || "N/A"}
+                        </p>
+                        <p>
+                          <strong>License Number:</strong>{" "}
+                          {selectedRecord.License_Number || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Provider_Credential_Text:</strong>{" "}
+                          {selectedRecord.Provider_Credential_Text || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Provider_Name_Prefix_Text:</strong>{" "}
+                          {selectedRecord.Provider_Name_Prefix_Text || "N/A"}
+                        </p>
+                        <p>
+                          <strong>practice_postal_code:</strong>{" "}
+                          {selectedRecord.practice_postal_code || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Taxonomy_Code:</strong>{" "}
+                          {selectedRecord.Taxonomy_Code || "N/A"}
+                        </p>
+                        <p>
+                          <strong>Provider_License_State:</strong>{" "}
+                          {selectedRecord.Provider_License_State || "N/A"}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
+      <div className="pagination-controls">
+        <button
+          disabled={pagination.currentPage === 1}
+          onClick={() => handleSearch(pagination.currentPage - 1)}
+        >
+          Previous
+        </button>
+        <span>
+          Page {pagination.currentPage} of {pagination.totalPages}
+        </span>
+        <button
+          disabled={pagination.currentPage === pagination.totalPages}
+          onClick={() => handleSearch(pagination.currentPage + 1)}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 };
