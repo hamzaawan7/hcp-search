@@ -155,13 +155,16 @@ router.get("/suggested", (req, res) => {
   });
 
   // Removing duplicate fuzzy results using NPI as a unique identifier
-  const uniqueFuzzyResults = Array.from(new Map(fuzzyResults.map((item) => [item.NPI, item])).values());
+  const uniqueResults = Array.from(new Map(fuzzyResults.map((item) => [item.NPI, item])).values());
+
+  const suggestedMatches = uniqueResults.filter((item) => parseFloat(item.similarity) < 100.0 && parseFloat(item.similarity) >= 50.0);
+
 
   console.log("✅ Exact Matches:", exactMatches.length);
-  console.log("🔍 Fuzzy Search Results:", uniqueFuzzyResults.length);
+  console.log("🔍 Fuzzy Search Results:", suggestedMatches.length);
 
   // Paginate fuzzy search results
-  const paginatedFuzzyResults = paginateResults(uniqueFuzzyResults, page, limit);
+  const paginatedFuzzyResults = paginateResults(suggestedMatches, page, limit);
 
   res.status(200).json({
     exactMatches,
