@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 // File path for storing the fetched data
-const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json"; // Update this path as per your setup
+const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json"; // Update this path as per your setup
 
 // Helper function to read data from the JSON file
 const readFromJsonFile = () => {

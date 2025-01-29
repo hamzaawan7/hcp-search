@@ -3,7 +3,7 @@ const fs = require('fs');
 const router = express.Router();
 
 // File path for storing the fetched data
-const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json"; // Path to your JSON file
+const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json"; // Path to your JSON file
 
 // Helper function to read data from the JSON file
 const readFromJsonFile = () => {

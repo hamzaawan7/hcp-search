@@ -2,7 +2,7 @@ const fs = require("fs");
 const connectToDB = require("../config/db");
 
 // File path for storing the fetched data
-const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json";
+const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json";
 
 let jobStatus = {
   running: false,
