@@ -1665,7 +1665,7 @@ const DirectSearchPage = () => {
       </div>
 
       {aiMatching && exactMatches.length > 0 && (
-        <div>
+        <div className="exactmatches">
           <h2>Exact Matches</h2>
           <table className="results-table">
             <thead>
@@ -1707,7 +1707,7 @@ const DirectSearchPage = () => {
         </div>
       )}
 
-      <div>
+      <div className="suggestedmatches">
         {aiMatching && <h2>Suggested Matches</h2>}{" "}
         <table className="results-table">
           <thead>
