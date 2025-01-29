@@ -1411,7 +1411,9 @@ const DirectSearchPage = () => {
         setExactMatches(data.exactMatches); // Exact match results
         setResults(data.suggestedMatches); // Suggested match results
       } else {
-        setResults(data.results?.filter(item => item.Country === country) || []);
+        setResults(
+          data.results?.filter((item) => item.Country === country) || []
+        );
         setExactMatches([]); // No exact matches for direct search
       }
 
@@ -1676,6 +1678,7 @@ const DirectSearchPage = () => {
                 <th>City</th>
                 <th>State</th>
                 <th>Specialty</th>
+                <th>Similarity</th> {/* New column for similarity */}
                 <th>Action</th>
               </tr>
             </thead>
@@ -1690,6 +1693,8 @@ const DirectSearchPage = () => {
                   <td>{item.practice_city}</td>
                   <td>{item.practice_st}</td>
                   <td>{item.Specialty_1}</td>
+                  <td>{item.similarity}</td>{" "}
+                  {/* Displaying 100.00% for exact matches */}
                   <td>
                     <button onClick={() => handleView(item, index)}>
                       View

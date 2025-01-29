@@ -75,7 +75,6 @@ router.get("/exact", (req, res) => {
 router.get("/suggested", (req, res) => {
   let { page = 1, limit = 10, country, ...filters } = req.query;
 
-  // Mapping frontend search fields to actual JSON database keys
   const fieldMapping = {
     firstName: "HCP_first_name",
     lastName: "HCP_last_name",
@@ -102,50 +101,67 @@ router.get("/suggested", (req, res) => {
 
   console.log(`🔍 Searching for:`, filledFields);
 
-  let exactMatches = inMemoryIndex.data.filter((item) =>
-    filledFields.every(({ key, value }) =>
+  let exactMatches = [];
+  let fuzzySearchData = [];
+
+  let filteredData = country
+    ? inMemoryIndex.data.filter(
+        (item) => item.Country && item.Country.toLowerCase() === country.toLowerCase()
+      )
+    : inMemoryIndex.data;
+
+  // Finding exact matches based on strict criteria
+  exactMatches = filteredData.filter((item) => {
+    let totalFields = filledFields.length;
+    let matchedFields = filledFields.filter(({ key, value }) =>
       item[key] && item[key].toString().toLowerCase() === value
-    )
-  );
+    ).length;
 
-  // Apply country filter if provided
-  if (country) {
-    const lowerCaseCountry = country.toLowerCase();
-    exactMatches = exactMatches.filter(
-      (item) => item.Country && item.Country.toLowerCase() === lowerCaseCountry
-    );
-  }
+    // If all fields match, assign 100% similarity
+    return matchedFields === totalFields;
+  }).map((item) => ({
+    ...item,
+    similarity: "100.00%",
+  }));
 
-  // Remove exact matches from fuzzy search candidates
-  let fuzzySearchData = inMemoryIndex.data.filter((item) => !exactMatches.includes(item));
+  // Removing exact matches from fuzzy search data
+  fuzzySearchData = filteredData.filter((item) => !exactMatches.includes(item));
 
-  // Apply country filter for fuzzy search as well
-  if (country) {
-    const lowerCaseCountry = country.toLowerCase();
-    fuzzySearchData = fuzzySearchData.filter(
-      (item) => item.Country && item.Country.toLowerCase() === lowerCaseCountry
-    );
-  }
-
+  // Fuzzy search configuration
   const options = {
-    keys: filledFields.map(({ key }) => key), // Use only searched keys
-    threshold: 0.5, // Control fuzzy matching sensitivity
-    distance: 100, // Consider matches within a reasonable edit distance
+    keys: filledFields.map(({ key }) => key),
+    threshold: 0.4, // Adjust fuzziness threshold
+    distance: 100,
     includeScore: true,
   };
 
   const fuse = new Fuse(fuzzySearchData, options);
-  const fuzzyResults = fuse
-    .search(filledFields.map((f) => f.value).join(" "))
-    .map((result) => ({
-      ...result.item,
-      similarity: ((1 - result.score) * 100).toFixed(2) + "%", // Convert score to percentage
-    }));
+  let fuzzyResults = [];
 
-  console.log("✅ Exact Matches:", exactMatches);
-  console.log("🔍 Fuzzy Search Results:", fuzzyResults);
+  // Iterate over all data and compute similarity based on matched fields
+  fuzzySearchData.forEach((item) => {
+    let totalFields = filledFields.length;
+    let matchedFields = filledFields.filter(({ key, value }) =>
+      item[key] && item[key].toString().toLowerCase() === value
+    ).length;
 
-  const paginatedFuzzyResults = paginateResults(fuzzyResults, page, limit);
+    if (matchedFields > 0) {
+      let similarityScore = ((matchedFields / totalFields) * 100).toFixed(2) + "%";
+      fuzzyResults.push({
+        ...item,
+        similarity: similarityScore, // Assign similarity dynamically
+      });
+    }
+  });
+
+  // Removing duplicate fuzzy results using NPI as a unique identifier
+  const uniqueFuzzyResults = Array.from(new Map(fuzzyResults.map((item) => [item.NPI, item])).values());
+
+  console.log("✅ Exact Matches:", exactMatches.length);
+  console.log("🔍 Fuzzy Search Results:", uniqueFuzzyResults.length);
+
+  // Paginate fuzzy search results
+  const paginatedFuzzyResults = paginateResults(uniqueFuzzyResults, page, limit);
 
   res.status(200).json({
     exactMatches,
@@ -153,5 +169,9 @@ router.get("/suggested", (req, res) => {
     pagination: paginatedFuzzyResults.pagination,
   });
 });
+
+
+
+
 
 module.exports = router;
