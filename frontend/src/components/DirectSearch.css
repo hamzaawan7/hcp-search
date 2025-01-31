@@ -105,7 +105,7 @@
     margin-bottom: 20px;
 }
 .form-row {
-    display: contents; /* Ensure each field is part of the grid */
+    display: contents;
 }
 .form-field {
     display: flex;
@@ -118,12 +118,12 @@
     font-weight: 600;
 }
 .form-field input, .form-field select {
-    width: 100%; /* Ensure all fields have the same width */
+    width: 100%;
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 5px;
     font-size: 14px;
-    box-sizing: border-box; /* Include padding in the width */
+    box-sizing: border-box;
 }
 .actions {
     display: flex;
@@ -268,11 +268,11 @@
 }
 
 .revolving-loader {
-    border-top: 5px solid #F66618; /* Orange color */
+    border-top: 5px solid #F66618;
     border-radius: 50%;
-    width: 50px; /* Larger size */
+    width: 50px;
     height: 50px;
-    animation: spin 0.8s linear infinite; /* Faster spin */
+    animation: spin 0.8s linear infinite;
     margin: 20px auto;
 }
 
@@ -284,4 +284,3 @@
         transform: rotate(360deg);
     }
 }
-

@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require("fs");
 const path = require("path");
 
-const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json"; // Update this path as per your setup
+const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json";
 const readFromJsonFile = () => {
   try {
     if (fs.existsSync(dataFilePath)) {
@@ -116,7 +116,7 @@ router.get("/direct", (req, res) => {
           matchesMailingState &&
           matchesLicenseNo &&
           matchesSpecialty &&
-          matchesCountry // Include country in the filtering logic
+          matchesCountry
       );
     });
 
@@ -143,7 +143,7 @@ router.get("/direct", (req, res) => {
 router.get("/direct/view/:npi", (req, res) => {
   const { npi } = req.params;
   try {
-    const inMemoryIndex = readFromJsonFile(); // Read data from the JSON file
+    const inMemoryIndex = readFromJsonFile();
     const record = inMemoryIndex.data.find(
         (item) => item.NPI && item.NPI.toString() === npi
     );
