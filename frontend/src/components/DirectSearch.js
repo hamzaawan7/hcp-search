@@ -1027,7 +1027,7 @@ const DirectSearchPage = () => {
               </div>
             </div>
         )}
-        {loading && <div className="loader">Loading...</div>}
+        {loading && <div className="revolving-loader"></div>}
         {showMultipleSearch ? (
             <div className="multiple-search-form">
               <div className="form-row">
