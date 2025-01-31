@@ -7,6 +7,7 @@
     "start": "nodemon app.js"
   },
   "devDependencies": {
+    "eslint": "^9.19.0",
     "nodemon": "^2.0.22"
   },
   "keywords": [],
@@ -23,6 +24,7 @@
     "fuzzball": "^2.1.3",
     "leven": "^4.0.0",
     "levenshtein": "^1.0.5",
+    "lint": "^0.8.19",
     "mssql": "^11.0.1",
     "natural": "^8.0.1",
     "node-cron": "^3.0.3",
