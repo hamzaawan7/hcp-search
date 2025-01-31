@@ -58,61 +58,68 @@ router.get("/direct", (req, res) => {
     const inMemoryIndex = readFromJsonFile();
     const results = inMemoryIndex.data.filter((item) => {
       if (!item || typeof item !== "object") return false;
+
       const matchesNPI = npi
-        ? item.NPI && item.NPI.toString() === npi.toString()
-        : true;
+          ? item.NPI && item.NPI.toString() === npi.toString()
+          : true;
       const matchesFirstName = firstName
-        ? item.HCP_first_name &&
+          ? item.HCP_first_name &&
           item.HCP_first_name.toLowerCase() === firstName.toLowerCase()
-        : true;
+          : true;
       const matchesLastName = lastName
-        ? item.HCP_last_name &&
+          ? item.HCP_last_name &&
           item.HCP_last_name.toLowerCase() === lastName.toLowerCase()
-        : true;
+          : true;
       const matchesAddress = address
           ? item.practice_address &&
-            item.practice_address.toLowerCase() === address.toLowerCase()
+          item.practice_address.toLowerCase() === address.toLowerCase()
           : true;
       const matchesState = state
-        ? item.practice_st &&
+          ? item.practice_st &&
           item.practice_st.toLowerCase() === state.toLowerCase()
-        : true;
+          : true;
       const matchesCity = city
-        ? item.practice_city &&
+          ? item.practice_city &&
           item.practice_city.toLowerCase() === city.toLowerCase()
-        : true;
-      const matchesmailingCity = mailingCity
+          : true;
+      const matchesMailingCity = mailingCity
           ? item.mailing_city &&
-            item.mailing_city.toLowerCase() === mailingCity.toLowerCase()
+          item.mailing_city.toLowerCase() === mailingCity.toLowerCase()
           : true;
-      const matchesmailingState = mailingState
+      const matchesMailingState = mailingState
           ? item.mailing_st &&
-            item.mailing_st.toLowerCase() === mailingState.toLowerCase()
+          item.mailing_st.toLowerCase() === mailingState.toLowerCase()
           : true;
-      const matcheslicenseNo = licenseNo
+      const matchesLicenseNo = licenseNo
           ? item.License_Number &&
-            item.License_Number.toLowerCase() === licenseNo.toLowerCase()
+          item.License_Number.toLowerCase() === licenseNo.toLowerCase()
           : true;
       const matchesSpecialty = specialty
-        ? (
-            (item.Specialty_1 && item.Specialty_1.toLowerCase() === specialty.toLowerCase()) ||
-            (item.Specialty_2 && item.Specialty_2.toLowerCase() === specialty.toLowerCase()) ||
-            (item.Specialty_3 && item.Specialty_3.toLowerCase() === specialty.toLowerCase())
+          ? (
+              (item.Specialty_1 && item.Specialty_1.toLowerCase() === specialty.toLowerCase()) ||
+              (item.Specialty_2 && item.Specialty_2.toLowerCase() === specialty.toLowerCase()) ||
+              (item.Specialty_3 && item.Specialty_3.toLowerCase() === specialty.toLowerCase())
           )
-        : true;
+          : true;
+      const matchesCountry = country
+          ? item.Country && item.Country.toLowerCase() === country.toLowerCase()
+          : true;
 
       return (
           matchesNPI &&
           matchesFirstName &&
           matchesLastName &&
+          matchesAddress &&
           matchesState &&
-          matchesCity&&
-          matchesmailingCity&&
-          matchesmailingState&&
-          matcheslicenseNo&&
-          matchesSpecialty
+          matchesCity &&
+          matchesMailingCity &&
+          matchesMailingState &&
+          matchesLicenseNo &&
+          matchesSpecialty &&
+          matchesCountry // Include country in the filtering logic
       );
     });
+
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const paginatedResults = results.slice(offset, offset + parseInt(limit, 10));
 
@@ -128,18 +135,17 @@ router.get("/direct", (req, res) => {
   } catch (error) {
     console.error("Error processing search request:", error);
     res
-      .status(500)
-      .json({ error: "An error occurred while processing the search request." });
+        .status(500)
+        .json({ error: "An error occurred while processing the search request." });
   }
 });
-
 
 router.get("/direct/view/:npi", (req, res) => {
   const { npi } = req.params;
   try {
     const inMemoryIndex = readFromJsonFile(); // Read data from the JSON file
     const record = inMemoryIndex.data.find(
-      (item) => item.NPI && item.NPI.toString() === npi
+        (item) => item.NPI && item.NPI.toString() === npi
     );
     if (!record) {
       return res.status(404).json({ error: "Record not found." });

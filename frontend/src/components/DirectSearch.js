@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import axios from "axios";
 import "./DirectSearch.css";
 
-
 const DirectSearchPage = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,7 +23,7 @@ const DirectSearchPage = () => {
   const [results, setResults] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [exactMatches, setExactMatches] = useState([]);
-  const [country, setCountry] = useState();
+  const [country, setCountry] = useState("All"); // Default to "All" countries
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -37,7 +36,7 @@ const DirectSearchPage = () => {
   const [aiMatching, setAiMatching] = useState(false);
 
   const stateCities = {
-    AL:  ["Birmingham", "Montgomery", "Mobile", "Huntsville", "Tuscaloosa", "Hoover", "Dothan", "Decatur", "Auburn", "Gadsden", "Florence", "Vestavia Hills", "Phenix City", "Prattville", "Alabaster", "Bessemer", "Enterprise", "Opelika", "Homewood", "Madison", "Anniston", "Selma", "Mountain Brook", "Pelham", "Trussville", "Helena", "Fairhope", "Oxford", "Cullman", "Foley"],
+    AL: ["Birmingham", "Montgomery", "Mobile", "Huntsville", "Tuscaloosa", "Hoover", "Dothan", "Decatur", "Auburn", "Gadsden", "Florence", "Vestavia Hills", "Phenix City", "Prattville", "Alabaster", "Bessemer", "Enterprise", "Opelika", "Homewood", "Madison", "Anniston", "Selma", "Mountain Brook", "Pelham", "Trussville", "Helena", "Fairhope", "Oxford", "Cullman", "Foley"],
     AK: ["Anchorage", "Fairbanks", "Juneau", "Wasilla", "Sitka", "Ketchikan", "Kenai", "Kodiak", "Bethel", "Palmer"],
     AZ: ["Phoenix", "Tucson", "Mesa", "Chandler", "Scottsdale", "Glendale", "Gilbert", "Tempe", "Peoria", "Surprise"],
     AR: ["Little Rock", "Fort Smith", "Fayetteville", "Springdale", "Jonesboro", "North Little Rock", "Conway", "Rogers", "Pine Bluff", "Bentonville"],
@@ -78,7 +77,8 @@ const DirectSearchPage = () => {
     RI: ["Providence", "Cranston", "Warwick", "Pawtucket", "East Providence", "Woonsocket", "Coventry", "Cumberland", "North Providence", "South Kingstown"],
     SC: ["Columbia", "Charleston", "North Charleston", "Mount Pleasant", "Rock Hill", "Greenville", "Summerville", "Sumter", "Goose Creek", "Hilton Head Island"],
     SD: ["Sioux Falls", "Rapid City", "Aberdeen", "Brookings", "Watertown", "Mitchell", "Yankton", "Pierre", "Huron", "Vermillion"],
-    TN: ["Nashville", "Memphis", "Knoxville", "Chattanooga", "Clarksville", "Murfreesboro", "Franklin", "Jackson", "Johnson City", "Bartlett"],    TX: ["Houston", "Austin", "Dallas"],
+    TN: ["Nashville", "Memphis", "Knoxville", "Chattanooga", "Clarksville", "Murfreesboro", "Franklin", "Jackson", "Johnson City", "Bartlett"],
+    TX: ["Houston", "Austin", "Dallas"],
     UT: ["Salt Lake City", "West Valley City", "Provo", "West Jordan", "Orem", "Sandy", "Ogden", "St. George", "Layton", "South Jordan"],
     VT: ["Burlington", "South Burlington", "Rutland", "Essex Junction", "Barre", "Bennington", "Williston", "Montpelier", "Middlebury", "Brattleboro"],
     VA: ["Virginia Beach", "Norfolk", "Chesapeake", "Richmond", "Newport News", "Alexandria", "Hampton", "Roanoke", "Portsmouth", "Suffolk"],
@@ -813,7 +813,6 @@ const DirectSearchPage = () => {
     "Wound Care"
   ];
 
-
   const toggleSearchMode = () => {
     setShowMultipleSearch(!showMultipleSearch);
     clearForm();
@@ -873,6 +872,12 @@ const DirectSearchPage = () => {
     const filteredParams = Object.fromEntries(
         Object.entries(formData).filter(([_, value]) => value.trim() !== "")
     );
+
+    // Add the selected country to the search parameters
+    if (country && country !== "All") {
+      filteredParams.country = country;
+    }
+
     if (Object.keys(filteredParams).length === 0) {
       alert("Please fill in at least one field before searching.");
       return;
@@ -905,9 +910,10 @@ const DirectSearchPage = () => {
       setLoading(false);
     }
   };
+
   const handleCountryChange = (selectedCountry) => {
     setCountry(selectedCountry);
-    handleSearch(1);
+    handleSearch(1); // Trigger search when country is changed
   };
 
   const handleView = async (record, index) => {
@@ -932,12 +938,13 @@ const DirectSearchPage = () => {
       firstName: "",
       lastName: "",
       address: "",
-      country:"",
+      country: "",
       npi: "",
       specialty: "",
       state: "",
       city: "",
       licenseState: "",
+      licenseNumber: "",
     });
     setMultipleSearchTerm("");
     setResults([]);
@@ -1008,7 +1015,6 @@ const DirectSearchPage = () => {
           >
             <img src="/images/netherlands.png" alt="Netherland Flag" /> Netherland
           </button>
-
         </div>
         {!showMultipleSearch && (
             <div className="toggle-container">
@@ -1141,7 +1147,7 @@ const DirectSearchPage = () => {
                 <div className="form-field">
                   <label>License No</label>
                   <input
-                      name="licenseNumber" // Corrected to match formData.licenseNumber
+                      name="licenseNumber"
                       value={formData.licenseNumber}
                       onChange={handleInputChange}
                       placeholder="Enter License No"
