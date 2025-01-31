@@ -258,6 +258,7 @@
     font-size: 14px;
     color: white;
     font-weight: bold;
+    margin-top: 7px;
 }
 
 .pagination-controls button:disabled {
