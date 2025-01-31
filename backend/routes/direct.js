@@ -19,23 +19,33 @@ const readFromJsonFile = () => {
 
 router.get("/direct", (req, res) => {
   const {
+    npi,
     firstName,
     lastName,
-    npi,
-    specialty,
-    state,
+    address,
     city,
+    state,
+    mailingCity,
+    mailingState,
+    licenseNo,
+    specialty,
+    country,
     page = 1,
     limit = 10,
   } = req.query;
 
   const hasAtLeastOneField = [
+    npi,
     firstName,
     lastName,
-    npi,
-    specialty,
-    state,
+    address,
     city,
+    state,
+    mailingCity,
+    mailingState,
+    licenseNo,
+    specialty,
+    country,
   ].some((field) => field && field.trim() !== "");
 
   if (!hasAtLeastOneField) {
@@ -48,6 +58,9 @@ router.get("/direct", (req, res) => {
     const inMemoryIndex = readFromJsonFile();
     const results = inMemoryIndex.data.filter((item) => {
       if (!item || typeof item !== "object") return false;
+      const matchesNPI = npi
+        ? item.NPI && item.NPI.toString() === npi.toString()
+        : true;
       const matchesFirstName = firstName
         ? item.HCP_first_name &&
           item.HCP_first_name.toLowerCase() === firstName.toLowerCase()
@@ -56,16 +69,10 @@ router.get("/direct", (req, res) => {
         ? item.HCP_last_name &&
           item.HCP_last_name.toLowerCase() === lastName.toLowerCase()
         : true;
-      const matchesNPI = npi
-        ? item.NPI && item.NPI.toString() === npi.toString()
-        : true;
-        const matchesSpecialty = specialty
-        ? (
-            (item.Specialty_1 && item.Specialty_1.toLowerCase() === specialty.toLowerCase()) ||
-            (item.Specialty_2 && item.Specialty_2.toLowerCase() === specialty.toLowerCase()) ||
-            (item.Specialty_3 && item.Specialty_3.toLowerCase() === specialty.toLowerCase())
-          )
-        : true;
+      const matchesAddress = address
+          ? item.practice_address &&
+            item.practice_address.toLowerCase() === address.toLowerCase()
+          : true;
       const matchesState = state
         ? item.practice_st &&
           item.practice_st.toLowerCase() === state.toLowerCase()
@@ -74,13 +81,36 @@ router.get("/direct", (req, res) => {
         ? item.practice_city &&
           item.practice_city.toLowerCase() === city.toLowerCase()
         : true;
+      const matchesmailingCity = mailingCity
+          ? item.mailing_city &&
+            item.mailing_city.toLowerCase() === mailingCity.toLowerCase()
+          : true;
+      const matchesmailingState = mailingState
+          ? item.mailing_st &&
+            item.mailing_st.toLowerCase() === mailingState.toLowerCase()
+          : true;
+      const matcheslicenseNo = licenseNo
+          ? item.License_Number &&
+            item.License_Number.toLowerCase() === licenseNo.toLowerCase()
+          : true;
+      const matchesSpecialty = specialty
+        ? (
+            (item.Specialty_1 && item.Specialty_1.toLowerCase() === specialty.toLowerCase()) ||
+            (item.Specialty_2 && item.Specialty_2.toLowerCase() === specialty.toLowerCase()) ||
+            (item.Specialty_3 && item.Specialty_3.toLowerCase() === specialty.toLowerCase())
+          )
+        : true;
+
       return (
-        matchesFirstName &&
-        matchesLastName &&
-        matchesNPI &&
-        matchesSpecialty &&
-        matchesState &&
-        matchesCity
+          matchesNPI &&
+          matchesFirstName &&
+          matchesLastName &&
+          matchesState &&
+          matchesCity&&
+          matchesmailingCity&&
+          matchesmailingState&&
+          matcheslicenseNo&&
+          matchesSpecialty
       );
     });
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);

@@ -14,9 +14,8 @@ function App() {
                 </header>
                 <main>
                     <Routes>
-                        <Route path="/" element={<Search />} />
+                        <Route path="/" element={<DirectSearch />} />
                         <Route path="/details/:npi" element={<Details />} />
-                        <Route path="/direct-search" element={<DirectSearch />} />
                     </Routes>
                 </main>
             </div>

@@ -32,6 +32,13 @@ const Results = ({
     practice_address: "Practice Address",
     practice_city: "City",
     practice_st: "State",
+    mailing_city: "Mailing City",
+    mailing_st: "Mailing State",
+    License_Number: "License Number",
+    Provider_License_State: "Provider License",
+    Specialty_1: "Speciality 1",
+    Specialty_2: "Speciality 2",
+    Specialty_3: "Speciality 3",
     Country: "Country",
     similarity: "Similarity",
   };
