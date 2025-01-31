@@ -96,8 +96,9 @@
 }
 .multiple-search-form {
     margin: 20px 0;
+    opacity: 50%;
 }
-.search-form, .multiple-search-form {
+.search-form {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
