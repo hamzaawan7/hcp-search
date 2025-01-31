@@ -1170,7 +1170,7 @@ const DirectSearchPage = () => {
               <table className="results-table">
                 <thead>
                 <tr>
-                  <th>NPI</th>
+                  <th>HCP ID</th>
                   <th>First Name</th>
                   <th>Last Name</th>
                   <th>Address</th>
@@ -1203,7 +1203,7 @@ const DirectSearchPage = () => {
                           <tr className="details-popup">
                             <td colSpan="14">
                               <div className="popup-content">
-                                <h3>Details for NPI: {selectedRecord.NPI}</h3>
+                                <h3>HCP ID: {selectedRecord.NPI}</h3>
                                 <p>
                                   <strong>Practice Address:</strong>{" "}
                                   {selectedRecord.practice_address || "N/A"}
