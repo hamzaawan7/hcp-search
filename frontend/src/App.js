@@ -10,7 +10,7 @@ function App() {
         <Router>
             <div className="App">
                 <header className="app-header">
-                    <img src={logo} alt="Vector Health Logo" className="logo" />
+                    <img src={logo} alt="Vector Health Logo" className="logo" style={{    marginLeft: "41%", marginTop:"15px", height: "70px"}} />
                 </header>
                 <main>
                     <Routes>

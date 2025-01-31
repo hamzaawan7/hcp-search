@@ -3,24 +3,20 @@ const router = express.Router();
 const fs = require("fs");
 const path = require("path");
 
-// File path for storing the fetched data
-const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json"; // Update this path as per your setup
-
-// Helper function to read data from the JSON file
+const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json"; // Update this path as per your setup
 const readFromJsonFile = () => {
   try {
     if (fs.existsSync(dataFilePath)) {
       const data = fs.readFileSync(dataFilePath, "utf8");
       return JSON.parse(data);
     }
-    return { data: [] }; // Return empty data structure if file doesn't exist
+    return { data: [] };
   } catch (err) {
     console.error("Error reading from JSON file:", err);
-    return { data: [] }; // Fallback if an error occurs
+    return { data: [] };
   }
 };
 
-// Direct search route with required first name
 router.get("/direct", (req, res) => {
   const {
     firstName,
@@ -33,7 +29,6 @@ router.get("/direct", (req, res) => {
     limit = 10,
   } = req.query;
 
-  // Check if at least one field is filled
   const hasAtLeastOneField = [
     firstName,
     lastName,
@@ -50,26 +45,20 @@ router.get("/direct", (req, res) => {
   }
 
   try {
-    const inMemoryIndex = readFromJsonFile(); // Read data from the JSON file
-
-    // Filter results based on query parameters
+    const inMemoryIndex = readFromJsonFile();
     const results = inMemoryIndex.data.filter((item) => {
       if (!item || typeof item !== "object") return false;
-
       const matchesFirstName = firstName
         ? item.HCP_first_name &&
           item.HCP_first_name.toLowerCase() === firstName.toLowerCase()
         : true;
-
       const matchesLastName = lastName
         ? item.HCP_last_name &&
           item.HCP_last_name.toLowerCase() === lastName.toLowerCase()
         : true;
-
       const matchesNPI = npi
         ? item.NPI && item.NPI.toString() === npi.toString()
         : true;
-
         const matchesSpecialty = specialty
         ? (
             (item.Specialty_1 && item.Specialty_1.toLowerCase() === specialty.toLowerCase()) ||
@@ -77,18 +66,14 @@ router.get("/direct", (req, res) => {
             (item.Specialty_3 && item.Specialty_3.toLowerCase() === specialty.toLowerCase())
           )
         : true;
-      
-
       const matchesState = state
         ? item.practice_st &&
           item.practice_st.toLowerCase() === state.toLowerCase()
         : true;
-
       const matchesCity = city
         ? item.practice_city &&
           item.practice_city.toLowerCase() === city.toLowerCase()
         : true;
-
       return (
         matchesFirstName &&
         matchesLastName &&
@@ -98,12 +83,9 @@ router.get("/direct", (req, res) => {
         matchesCity
       );
     });
-
-    // Pagination logic
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const paginatedResults = results.slice(offset, offset + parseInt(limit, 10));
 
-    // Respond with results and pagination metadata
     res.json({
       results: paginatedResults,
       pagination: {
@@ -124,17 +106,14 @@ router.get("/direct", (req, res) => {
 
 router.get("/direct/view/:npi", (req, res) => {
   const { npi } = req.params;
-
   try {
     const inMemoryIndex = readFromJsonFile(); // Read data from the JSON file
     const record = inMemoryIndex.data.find(
       (item) => item.NPI && item.NPI.toString() === npi
     );
-
     if (!record) {
       return res.status(404).json({ error: "Record not found." });
     }
-
     res.json({ record });
   } catch (error) {
     console.error("Error fetching record details:", error);

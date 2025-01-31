@@ -5,15 +5,12 @@ import "./Details.css";
 
 const Details = () => {
     const navigate = useNavigate();
-    const { npi } = useParams(); // Get NPI from the URL
+    const { npi } = useParams();
     const location = useLocation();
-    const previousState = location.state || {}; // Get previous state
-
+    const previousState = location.state || {};
     const [record, setRecord] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-
-    // Fetch details for the specific NPI
     useEffect(() => {
         const fetchDetail = async () => {
             try {
@@ -25,7 +22,6 @@ const Details = () => {
                 setLoading(false);
             }
         };
-
         if (npi) {
             fetchDetail();
         } else {
@@ -33,45 +29,38 @@ const Details = () => {
             setLoading(false);
         }
     }, [npi]);
-
     const handleBackClick = () => {
     // Navigate back to the previous page with preserved state
     if (previousState.previousPage) {
         navigate(previousState.previousPage, {
             state: {
-                searchTerm: previousState.searchTerm, // Restore search term
-                pagination: previousState.pagination, // Restore pagination state
-                exact: previousState.exact || [], // Restore exact results
-                suggested: previousState.suggested || [], // Restore suggested results
-                fuzzy: previousState.fuzzy || [], // Restore fuzzy results
-                results: previousState.results || [], // Restore results
-                currentPage: previousState.currentPage || 1, // Restore current page
+                searchTerm: previousState.searchTerm,
+                pagination: previousState.pagination,
+                exact: previousState.exact || [],
+                suggested: previousState.suggested || [],
+                fuzzy: previousState.fuzzy || [],
+                results: previousState.results || [],
+                currentPage: previousState.currentPage || 1,
             },
         });
     } else {
-        navigate("/"); // Default fallback to home page
+        navigate("/");
     }
 };
-
-
     if (loading) {
         return <div className="loading-message">Loading details...</div>;
     }
-
     if (error) {
         return <div className="error-message">{error}</div>;
     }
-
     if (!record) {
         return <div>No data found.</div>;
     }
-
     return (
         <div className="details-container">
             <button className="back-button" onClick={handleBackClick}>
                 Back
             </button>
-
             <h3>Details for NPI: {npi}</h3>
             <table className="details-table">
                 <tbody>
@@ -86,5 +75,4 @@ const Details = () => {
         </div>
     );
 };
-
 export default Details;

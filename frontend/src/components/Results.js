@@ -25,7 +25,6 @@ const Results = ({
     "Country",
     "similarity",
   ];
-
   const fieldDisplayNames = {
     NPI: "NPI Number",
     HCP_first_name: "First Name",
@@ -36,7 +35,6 @@ const Results = ({
     Country: "Country",
     similarity: "Similarity",
   };
-
   const renderTable = (data, title) => {
     const fields = getFields();
     return (
@@ -69,10 +67,8 @@ const Results = ({
       </div>
     );
   };
-
   const renderPaginationControls = (pagination, onPageChange) => {
     const { currentPage = 1, totalPages = 1 } = pagination;
-
     return (
       <div className="pagination-controls">
         <button
@@ -93,7 +89,6 @@ const Results = ({
       </div>
     );
   };
-
   return (
     <div>
       <h2>Search Results for "{searchTerm}"</h2>
@@ -116,7 +111,6 @@ const Results = ({
           )}
         </>
       )}
-
       {type === "direct" && (
         <>
           {results.length > 0 ? (
@@ -129,7 +123,6 @@ const Results = ({
           )}
         </>
       )}
-
       {type === "multiple" && (
         <>
           {results.length > 0 ? (

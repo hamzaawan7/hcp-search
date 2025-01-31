@@ -5,17 +5,17 @@ const fs = require("fs");
 const path = require("path");
 const router = express.Router();
 
-const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json"; // Update this path as per your setup
+const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json"; // Update this path as per your setup
 const readFromJsonFile = () => {
     try {
         if (fs.existsSync(dataFilePath)) {
             const data = fs.readFileSync(dataFilePath, "utf8");
             return JSON.parse(data);
         }
-        return {data: []}; // Return empty data structure if file doesn't exist
+        return {data: []};
     } catch (err) {
         console.error("Error reading from JSON file:", err);
-        return {data: []}; // Fallback if an error occurs
+        return {data: []};
     }
 };
 
@@ -38,38 +38,37 @@ const paginateResults = (results, page, limit) => {
     };
 };
 
-router.get("/exact", (req, res) => {
-    const {term, country, page = 1, limit = 10} = req.query;
-
-    if (!term) {
-        return res.status(400).json({error: "Search term is required."});
-    }
-
-    const inMemoryIndex = readFromJsonFile();
-    const lowerCaseTerm = term.toLowerCase();
-
-    let results = inMemoryIndex.data.filter(
-        (item) =>
-            (item.HCP_first_name && item.HCP_first_name.toLowerCase() === lowerCaseTerm) ||
-            (item.HCP_last_name && item.HCP_last_name.toLowerCase() === lowerCaseTerm) ||
-            (item.practice_city && item.practice_city.toLowerCase() === lowerCaseTerm)
-    );
-
-    // Apply country filter if provided
-    if (country) {
-        const lowerCaseCountry = country.toLowerCase();
-        results = results.filter(
-            (item) => item.Country && item.Country.toLowerCase() === lowerCaseCountry
-        );
-    }
-
-    const paginated = paginateResults(results, page, limit);
-    res.json(paginated);
-});
+// router.get("/exact", (req, res) => {
+//     const {term, country, page = 1, limit = 10} = req.query;
+//
+//     if (!term) {
+//         return res.status(400).json({error: "Search term is required."});
+//     }
+//
+//     const inMemoryIndex = readFromJsonFile();
+//     const lowerCaseTerm = term.toLowerCase();
+//
+//     let results = inMemoryIndex.data.filter(
+//         (item) =>
+//             (item.HCP_first_name && item.HCP_first_name.toLowerCase() === lowerCaseTerm) ||
+//             (item.HCP_last_name && item.HCP_last_name.toLowerCase() === lowerCaseTerm) ||
+//             (item.practice_city && item.practice_city.toLowerCase() === lowerCaseTerm)
+//     );
+//
+//     // Apply country filter if provided
+//     if (country) {
+//         const lowerCaseCountry = country.toLowerCase();
+//         results = results.filter(
+//             (item) => item.Country && item.Country.toLowerCase() === lowerCaseCountry
+//         );
+//     }
+//
+//     const paginated = paginateResults(results, page, limit);
+//     res.json(paginated);
+// });
 
 router.get("/suggested", (req, res) => {
     let {page = 1, limit = 10, country, ...filters} = req.query;
-
     const fieldMapping = {
         firstName: "HCP_first_name",
         lastName: "HCP_last_name",
@@ -80,22 +79,17 @@ router.get("/suggested", (req, res) => {
         npi: "NPI",
         state: "practice_st",
     };
-
     const filledFields = Object.entries(filters)
         .filter(([_, value]) => value.trim() !== "")
         .map(([key, value]) => ({
             key: fieldMapping[key] || key,
             value: value.toLowerCase(),
         }));
-
     if (filledFields.length === 0) {
         return res.status(400).json({error: "At least one search field must be filled."});
     }
-
     const inMemoryIndex = readFromJsonFile();
-
     console.log(`🔍 Searching for:`, filledFields);
-
     let exactMatches = [];
     let fuzzySearchData = [];
     let fuzzyResults = [];
@@ -104,30 +98,25 @@ router.get("/suggested", (req, res) => {
             (item) => item.Country && item.Country.toLowerCase() === country.toLowerCase()
         )
         : inMemoryIndex.data;
-
     exactMatches = filteredData.filter((item) => {
         let totalFields = filledFields.length;
         let matchedFields = filledFields.filter(({key, value}) =>
             item[key] && item[key].toString().toLowerCase() === value
         ).length;
-
         return matchedFields === totalFields;
     }).map((item) => ({
         ...item,
         similarity: "100.00%",
     }));
-
     fuzzySearchData = filteredData.filter((item) => !exactMatches.includes(item));
     fuzzySearchData.forEach((item) => {
         let totalFields = filledFields.length;
         let totalLevenScore = 0;
-
         filledFields.forEach(({key, value}) => {
             if (item[key]) {
                 const itemValue = item[key].toString().toLowerCase();
                 const searchValue = value.toLowerCase();
                 const maxLen = Math.max(itemValue.length, searchValue.length);
-
                 if (maxLen > 0) {
                     const levenDistance = levenshtein.get(itemValue, searchValue);
                     const similarity = 1 - (levenDistance / maxLen); // Normalize similarity to [0,1]
@@ -135,41 +124,24 @@ router.get("/suggested", (req, res) => {
                 }
             }
         });
-
         if (totalFields > 0) {
             let similarityScore = (totalLevenScore / totalFields) * 100;
             fuzzyResults.push({
                 ...item,
-                similarity: similarityScore, // Store as a number for sorting
+                similarity: similarityScore,
             });
         }
-
-        /*if (totalFields > 0) {
-          let similarityScore = ((totalLevenScore / totalFields) * 100).toFixed(2) + "%";
-          fuzzyResults.push({
-            ...item,
-            similarity: similarityScore,
-          });
-        }*/
     });
-
-
     fuzzyResults.sort((a, b) => b.similarity - a.similarity);
     fuzzyResults = fuzzyResults.map(item => ({
         ...item,
-        similarity: item.similarity.toFixed(2) + "%" // Convert to string with '%' symbol
+        similarity: item.similarity.toFixed(2) + "%"
     }));
-
-    // Removing duplicate fuzzy results using NPI as a unique identifier
     const uniqueResults = Array.from(new Map(fuzzyResults.map((item) => [item.NPI, item])).values());
     const suggestedMatches = uniqueResults.filter((item) => parseFloat(item.similarity) < 100.0 && parseFloat(item.similarity) >= 51);
-
     console.log("✅ Exact Matches:", exactMatches.length);
     console.log("🔍 Fuzzy Search Results:", suggestedMatches.length);
-
-    // Paginate fuzzy search results
     const paginatedFuzzyResults = paginateResults(suggestedMatches, page, limit);
-
     res.status(200).json({
         exactMatches,
         suggestedMatches: paginatedFuzzyResults.results,

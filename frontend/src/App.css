@@ -3,7 +3,6 @@
   background-color: #f4f4f4;
   color: #000;
 }
-
 .app-header {
   display: flex;
   align-items: center;
@@ -12,11 +11,9 @@
   background-color: white;
   color: white;
 }
-
 .logo {
   height: 50px;
 }
-
 main {
   padding: 20px;
 }

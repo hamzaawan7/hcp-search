@@ -1,22 +1,18 @@
 const fs = require("fs");
 const connectToDB = require("../config/db");
 
-// File path for storing the fetched data
 const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json";
-
 let jobStatus = {
   running: false,
   progress: "Idle",
 };
 
-// Helper function to initialize the JSON file if it doesn't exist
 const initializeJsonFile = () => {
   try {
     if (!fs.existsSync(dataFilePath)) {
       console.log("File doesn't exist. Initializing new JSON file.");
       fs.writeFileSync(dataFilePath, JSON.stringify({ data: [] }, null, 2)); // Initialize with {"data":[]}
     } else {
-      // Validate the existing file
       validateAndRepairJsonFile();
     }
   } catch (err) {
@@ -24,18 +20,16 @@ const initializeJsonFile = () => {
   }
 };
 
-// Helper function to validate and repair the JSON file
 const validateAndRepairJsonFile = () => {
   try {
     const fileContent = fs.readFileSync(dataFilePath, "utf8");
-    JSON.parse(fileContent); // Try parsing to ensure it's valid
+    JSON.parse(fileContent);
   } catch (err) {
     console.error("Invalid JSON file detected. Repairing...");
-    fs.writeFileSync(dataFilePath, JSON.stringify({ data: [] }, null, 2)); // Reset to valid structure
+    fs.writeFileSync(dataFilePath, JSON.stringify({ data: [] }, null, 2));
   }
 };
 
-// Helper function to append new rows to the "data" array in the JSON file
 const appendToJsonFile = (rows) => {
   try {
     const fileContent = fs.readFileSync(dataFilePath, "utf8");
@@ -43,7 +37,6 @@ const appendToJsonFile = (rows) => {
 
     jsonData.data.push(...rows);
 
-    // Write the updated content back to the file
     fs.writeFileSync(dataFilePath, JSON.stringify(jsonData, null, 2));
     console.log("Appended data to JSON file successfully.");
   } catch (err) {
@@ -51,7 +44,6 @@ const appendToJsonFile = (rows) => {
   }
 };
 
-// Main function to fetch and index data
 const fetchAndIndexData = async (batchSize = 10000, maxDuration = 600000) => {
   initializeJsonFile(); 
 
@@ -73,7 +65,6 @@ const fetchAndIndexData = async (batchSize = 10000, maxDuration = 600000) => {
 
     let currentLastFetchedId = lastFetchedId;
 
-    // Fetch data from DB in chunks and append to file
     while (Date.now() - startTime < maxDuration) {
       const query = `
         SELECT TOP (${batchSize}) *
@@ -87,7 +78,7 @@ const fetchAndIndexData = async (batchSize = 10000, maxDuration = 600000) => {
 
       if (rows.length === 0) {
         console.log("No more data to fetch.");
-        break; // Exit loop when no more rows are returned
+        break;
       }
 
       appendToJsonFile(rows);
@@ -116,7 +107,7 @@ const getLastFetchedNPI = () => {
     return lastRecord ? lastRecord.NPI : 0;
   } catch (err) {
     console.error("Error reading last fetched NPI:", err);
-    return 0; // Default fallback
+    return 0;
   }
 };
 
