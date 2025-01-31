@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require("fs");
 const path = require("path");
 
-const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json"; // Update this path as per your setup
+const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json";
 
 const readFromJsonFile = () => {
   try {

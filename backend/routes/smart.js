@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const router = express.Router();
 
-const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json"; // Update this path as per your setup
+const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json";
 const readFromJsonFile = () => {
     try {
         if (fs.existsSync(dataFilePath)) {
@@ -37,35 +37,6 @@ const paginateResults = (results, page, limit) => {
         },
     };
 };
-
-// router.get("/exact", (req, res) => {
-//     const {term, country, page = 1, limit = 10} = req.query;
-//
-//     if (!term) {
-//         return res.status(400).json({error: "Search term is required."});
-//     }
-//
-//     const inMemoryIndex = readFromJsonFile();
-//     const lowerCaseTerm = term.toLowerCase();
-//
-//     let results = inMemoryIndex.data.filter(
-//         (item) =>
-//             (item.HCP_first_name && item.HCP_first_name.toLowerCase() === lowerCaseTerm) ||
-//             (item.HCP_last_name && item.HCP_last_name.toLowerCase() === lowerCaseTerm) ||
-//             (item.practice_city && item.practice_city.toLowerCase() === lowerCaseTerm)
-//     );
-//
-//     // Apply country filter if provided
-//     if (country) {
-//         const lowerCaseCountry = country.toLowerCase();
-//         results = results.filter(
-//             (item) => item.Country && item.Country.toLowerCase() === lowerCaseCountry
-//         );
-//     }
-//
-//     const paginated = paginateResults(results, page, limit);
-//     res.json(paginated);
-// });
 
 router.get("/suggested", (req, res) => {
     let {page = 1, limit = 10, country, ...filters} = req.query;
