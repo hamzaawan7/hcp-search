@@ -1,11 +1,9 @@
 const levenshtein = require('fast-levenshtein');
 const express = require("express");
-const Fuse = require("fuse.js");
 const fs = require("fs");
-const path = require("path");
 const router = express.Router();
 
-const dataFilePath = "D:/web/smart/Jobs/backend/jobs/data2.json";
+const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json";
 const readFromJsonFile = () => {
     try {
         if (fs.existsSync(dataFilePath)) {

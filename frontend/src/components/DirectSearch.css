@@ -9,7 +9,7 @@
     margin-bottom: 30px;
 }
 .header h1 {
-    font-size: 2.8rem;
+    font-size: 2rem;
     color: #00429B;
     font-weight: 700;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
@@ -150,7 +150,10 @@
     color: white;
 }
 .suggestedmatches h2 {
-    color: white;
+    color: black;
+}
+.suggestedmatches h3 {
+    color: black;
 }
 .results-table {
     width: 100%;
@@ -164,14 +167,14 @@
 .results-table th,
 .results-table td {
     padding: 12px 15px;
-    text-align: left;
+    text-align: center;
 }
 .results-table th {
     background-color: #00429B;
     color: #fff;
     font-weight: bold;
     text-transform: uppercase;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 .results-table tr:nth-child(even) {
     background: #f9f9f9;
@@ -182,6 +185,7 @@
 .results-table td {
     border-bottom: 1px solid #ddd;
     text-align: center;
+    font-size: 0.7rem;
 }
 .results-table button {
     background: #F66618;
@@ -253,11 +257,12 @@
     background-color: #00429B;
     cursor: pointer;
     border-radius: 5px;
+    color: white;
 }
 
 .pagination-controls span {
     font-size: 14px;
-    color: white;
+    color: black;
     font-weight: bold;
     margin-top: 7px;
 }

@@ -825,7 +825,7 @@ const DirectSearchPage = () => {
     }
     setLoading(true);
     try {
-      const { data } = await axios.get("http://localhost:5000/search/multiple", {
+      const { data } = await axios.get("http://localhost:5001/search/multiple", {
         params: {
           term: multipleSearchTerm,
           page,
@@ -845,6 +845,8 @@ const DirectSearchPage = () => {
 
   const toggleAiMatching = () => {
     setAiMatching(!aiMatching);
+    setExactMatches([]);
+    setResults([]);
   };
 
   const handleInputChange = (e) => {
@@ -886,8 +888,8 @@ const DirectSearchPage = () => {
     setLoading(true);
     try {
       const endpoint = aiMatching
-          ? "http://localhost:5000/search/smart/suggested"
-          : "http://localhost:5000/search/direct";
+          ? "http://localhost:5001/search/smart/suggested"
+          : "http://localhost:5001/search/direct";
       const queryParams = {
         ...filteredParams,
         page,
@@ -924,7 +926,7 @@ const DirectSearchPage = () => {
         return;
       }
       const { data } = await axios.get(
-          `http://localhost:5000/search/direct/view/${record.NPI}`
+          `http://localhost:5001/search/direct/view/${record.NPI}`
       );
       setSelectedRecord(data.record);
       setPopupRowIndex(index);
@@ -971,49 +973,49 @@ const DirectSearchPage = () => {
               className={`language-button ${country === "All" ? "active" : ""}`}
               onClick={() => handleCountryChange("All")}
           >
-            <img src="/images/planet-earth.png" alt="Global" /> All
+            <img src="/images/planet-earth.png" alt="Global"/> All
           </button>
 
           <button
               className={`language-button ${country === "US" ? "active" : ""}`}
               onClick={() => handleCountryChange("US")}
           >
-            <img src="/images/US.png" alt="US Flag" /> United States
+            <img src="/images/US.png" alt="US Flag"/> United States
           </button>
 
           <button
               className={`language-button ${country === "Italy" || country === "ITA" ? "active" : ""}`}
               onClick={() => handleCountryChange("Italy")}
           >
-            <img src="/images/italy.png" alt="Italy Flag" /> Italy
+            <img src="/images/italy.png" alt="Italy Flag"/> Italy
           </button>
 
           <button
               className={`language-button ${country === "Portugal" || country === "PRT" ? "active" : ""}`}
               onClick={() => handleCountryChange("Portugal")}
           >
-            <img src="/images/portugal.png" alt="Portugal Flag" /> Portugal
+            <img src="/images/portugal.png" alt="Portugal Flag"/> Portugal
           </button>
 
           <button
               className={`language-button ${country === "France" || country === "FRA" ? "active" : ""}`}
               onClick={() => handleCountryChange("France")}
           >
-            <img src="/images/france.png" alt="France Flag" /> France
+            <img src="/images/france.png" alt="France Flag"/> France
           </button>
 
           <button
               className={`language-button ${country === "Belgium" || country === "BEL" ? "active" : ""}`}
               onClick={() => handleCountryChange("Belgium")}
           >
-            <img src="/images/belgium.png" alt="Belgium Flag" /> Belgium
+            <img src="/images/belgium.png" alt="Belgium Flag"/> Belgium
           </button>
 
           <button
               className={`language-button ${country === "Netherland" || country === "NED" ? "active" : ""}`}
               onClick={() => handleCountryChange("Netherland")}
           >
-            <img src="/images/netherlands.png" alt="Netherland Flag" /> Netherland
+            <img src="/images/netherlands.png" alt="Netherland Flag"/> Netherland
           </button>
         </div>
         {!showMultipleSearch && (
@@ -1158,15 +1160,119 @@ const DirectSearchPage = () => {
         )}
         <div className="actions">
           <button onClick={() => handleSearch(1)}>
-            <img src="/images/search.png" alt="Search" /> Search
+            <img src="/images/search.png" alt="Search"/> Search
           </button>
           <button onClick={clearForm}>
-            <img src="/images/clear-format.png" alt="Clear" /> Clear
+            <img src="/images/clear-format.png" alt="Clear"/> Clear
           </button>
         </div>
+        { exactMatches.length > 0 && (
+            <div className="suggestedmatches">
+            <h3>Exact Matches</h3>
+            <table className="results-table">
+              <thead>
+              <tr>
+                <th>HCP ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Address</th>
+                <th>Country</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Specialty</th>
+                <th>Action</th>
+              </tr>
+              </thead>
+              <tbody>
+              {exactMatches.map((item, index) => (
+                  <React.Fragment key={item.NPI}>
+                    <tr>
+                      <td>{item.NPI}</td>
+                      <td>{item.HCP_first_name}</td>
+                      <td>{item.HCP_last_name}</td>
+                      <td>{item.practice_address}</td>
+                      <td>{item.Country}</td>
+                      <td>{item.practice_city}</td>
+                      <td>{item.practice_st}</td>
+                      <td>{item.Specialty_1}</td>
+                      <td>
+                        <button onClick={() => handleView(item, index)}>View</button>
+                      </td>
+                    </tr>
+                    {popupRowIndex === index && selectedRecord && (
+                        <tr className="details-popup">
+                          <td colSpan="14">
+                            <div className="popup-content">
+                              <h3>HCP ID: {selectedRecord.NPI}</h3>
+                              <p>
+                                <strong>Practice Address:</strong>{" "}
+                                {selectedRecord.practice_address || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Mailing Address:</strong>{" "}
+                                {selectedRecord.mailing_address || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Mailing City:</strong>{" "}
+                                {selectedRecord.mailing_city || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Mailing State:</strong>{" "}
+                                {selectedRecord.mailing_st || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Mailing Postal Code:</strong>{" "}
+                                {selectedRecord.mailing_postal_code || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Specialty 1:</strong>{" "}
+                                {selectedRecord.Specialty_2 || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Specialty 2:</strong>{" "}
+                                {selectedRecord.Specialty_2 || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Specialty 3:</strong>{" "}
+                                {selectedRecord.Specialty_3 || "N/A"}
+                              </p>
+                              <p>
+                                <strong>License Number:</strong>{" "}
+                                {selectedRecord.License_Number || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Provider_Credential_Text:</strong>{" "}
+                                {selectedRecord.Provider_Credential_Text || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Provider_Name_Prefix_Text:</strong>{" "}
+                                {selectedRecord.Provider_Name_Prefix_Text || "N/A"}
+                              </p>
+                              <p>
+                                <strong>practice_postal_code:</strong>{" "}
+                                {selectedRecord.practice_postal_code || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Taxonomy_Code:</strong>{" "}
+                                {selectedRecord.Taxonomy_Code || "N/A"}
+                              </p>
+                              <p>
+                                <strong>Provider_License_State:</strong>{" "}
+                                {selectedRecord.Provider_License_State || "N/A"}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                    )}
+                  </React.Fragment>
+              ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         {results.length > 0 && (
             <div className="suggestedmatches">
-              {aiMatching && <h2>Suggested Matches</h2>}
+              { aiMatching && <h3>Suggested Matches</h3>}
               <table className="results-table">
                 <thead>
                 <tr>
