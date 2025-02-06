@@ -51,7 +51,7 @@ cron.schedule("*/2 * * * *", async () => {
 
   console.log("Scheduled job started...");
   try {
-    await fetchAndIndexData(500,  600000); 
+    await fetchAndIndexData(10000,  1000000);
     console.log("Scheduled job completed successfully.");
   } catch (err) {
     console.error("Error during scheduled job execution:", err);
@@ -61,7 +61,7 @@ cron.schedule("*/2 * * * *", async () => {
 (async () => {
   try {
     console.log("Server startup: Fetching initial data...");
-    await fetchAndIndexData(500,  600000); 
+    await fetchAndIndexData(10000,  1000000);
     console.log("Initial data fetch completed successfully.");
   } catch (err) {
     console.error("Error during initial data fetch:", err);

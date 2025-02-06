@@ -3,18 +3,55 @@ const router = express.Router();
 const fs = require("fs");
 const path = require("path");
 
-const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json";
-const readFromJsonFile = () => {
+const dataDir = "./Data"; // Directory where JSON files are stored
+
+// Function to read data from all JSON files
+const readFromJsonFiles = () => {
   try {
-    if (fs.existsSync(dataFilePath)) {
-      const data = fs.readFileSync(dataFilePath, "utf8");
-      return JSON.parse(data);
-    }
-    return { data: [] };
+    let combinedData = { data: [] };
+
+    // Read all files in the data directory
+    const files = fs.readdirSync(dataDir);
+
+    // Filter and read only JSON files
+    files.forEach((file) => {
+      if (file.startsWith("data_") && file.endsWith(".json")) {
+        const filePath = path.join(dataDir, file);
+        try {
+          const fileContent = fs.readFileSync(filePath, "utf8");
+          const jsonData = JSON.parse(fileContent);
+          combinedData.data.push(...jsonData.data); // Combine data from all files
+        } catch (err) {
+          console.error(`Error reading or parsing file ${file}:`, err);
+        }
+      }
+    });
+
+    return combinedData;
   } catch (err) {
-    console.error("Error reading from JSON file:", err);
+    console.error("Error reading from JSON files:", err);
     return { data: [] };
   }
+};
+
+// Paginate results
+const paginateResults = (results, page, limit) => {
+  const currentPage = parseInt(page, 10) || 1;
+  const pageSize = parseInt(limit, 10) || 10;
+  const totalRecords = results.length;
+  const totalPages = Math.ceil(totalRecords / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedResults = results.slice(startIndex, startIndex + pageSize);
+
+  return {
+    results: paginatedResults,
+    pagination: {
+      currentPage,
+      totalPages,
+      totalRecords,
+      pageSize,
+    },
+  };
 };
 
 router.get("/direct", (req, res) => {
@@ -55,7 +92,7 @@ router.get("/direct", (req, res) => {
   }
 
   try {
-    const inMemoryIndex = readFromJsonFile();
+    const inMemoryIndex = readFromJsonFiles();
     const results = inMemoryIndex.data.filter((item) => {
       if (!item || typeof item !== "object") return false;
 
@@ -120,30 +157,22 @@ router.get("/direct", (req, res) => {
       );
     });
 
-    const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-    const paginatedResults = results.slice(offset, offset + parseInt(limit, 10));
+    const paginatedResults = paginateResults(results, page, limit);
 
     res.json({
-      results: paginatedResults,
-      pagination: {
-        totalRecords: results.length,
-        currentPage: parseInt(page, 10),
-        totalPages: Math.ceil(results.length / limit),
-        pageSize: parseInt(limit, 10),
-      },
+      results: paginatedResults.results,
+      pagination: paginatedResults.pagination,
     });
   } catch (error) {
     console.error("Error processing search request:", error);
-    res
-        .status(500)
-        .json({ error: "An error occurred while processing the search request." });
+    res.status(500).json({ error: "An error occurred while processing the search request." });
   }
 });
 
 router.get("/direct/view/:npi", (req, res) => {
   const { npi } = req.params;
   try {
-    const inMemoryIndex = readFromJsonFile();
+    const inMemoryIndex = readFromJsonFiles();
     const record = inMemoryIndex.data.find(
         (item) => item.NPI && item.NPI.toString() === npi
     );

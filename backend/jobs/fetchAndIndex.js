@@ -1,53 +1,75 @@
 const fs = require("fs");
+const path = require("path");
 const connectToDB = require("../config/db");
 
-const dataFilePath = "/Users/test/Sites/hcp-search/backend/jobs/data2.json";
+const dataDir = "./Data";
+const indexFilePath = path.join(dataDir, "index.json");
 let jobStatus = {
   running: false,
   progress: "Idle",
 };
 
-const initializeJsonFile = () => {
-  try {
-    if (!fs.existsSync(dataFilePath)) {
-      console.log("File doesn't exist. Initializing new JSON file.");
-      fs.writeFileSync(dataFilePath, JSON.stringify({ data: [] }, null, 2)); // Initialize with {"data":[]}
-    } else {
-      validateAndRepairJsonFile();
-    }
-  } catch (err) {
-    console.error("Error initializing JSON file:", err);
+const ensureDataDirExists = () => {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
 };
 
-const validateAndRepairJsonFile = () => {
+const initializeIndexFile = () => {
+  if (!fs.existsSync(indexFilePath)) {
+    fs.writeFileSync(indexFilePath, JSON.stringify({ files: [] }, null, 2));
+  }
+};
+
+const validateAndRepairIndexFile = () => {
   try {
-    const fileContent = fs.readFileSync(dataFilePath, "utf8");
+    const fileContent = fs.readFileSync(indexFilePath, "utf8");
     JSON.parse(fileContent);
   } catch (err) {
-    console.error("Invalid JSON file detected. Repairing...");
-    fs.writeFileSync(dataFilePath, JSON.stringify({ data: [] }, null, 2));
+    console.error("Invalid index file detected. Repairing...");
+    fs.writeFileSync(indexFilePath, JSON.stringify({ files: [] }, null, 2));
   }
 };
 
-const appendToJsonFile = (rows) => {
+const appendToJsonFile = (rows, fileIndex) => {
+  const filePath = path.join(dataDir, `data_${fileIndex}.json`);
   try {
-    const fileContent = fs.readFileSync(dataFilePath, "utf8");
-    const jsonData = JSON.parse(fileContent); // Parse the existing JSON content
+    let jsonData = { data: [] };
+    if (fs.existsSync(filePath)) {
+      const fileContent = fs.readFileSync(filePath, "utf8");
+      jsonData = JSON.parse(fileContent);
+    }
 
     jsonData.data.push(...rows);
+    fs.writeFileSync(filePath, JSON.stringify(jsonData, null, 2));
 
-    fs.writeFileSync(dataFilePath, JSON.stringify(jsonData, null, 2));
-    console.log("Appended data to JSON file successfully.");
+    const indexContent = fs.readFileSync(indexFilePath, "utf8");
+    const indexData = JSON.parse(indexContent);
+
+    const fileInfo = indexData.files.find((file) => file.index === fileIndex);
+    if (fileInfo) {
+      fileInfo.endNPI = rows[rows.length - 1].NPI;
+    } else {
+      indexData.files.push({
+        index: fileIndex,
+        startNPI: rows[0].NPI,
+        endNPI: rows[rows.length - 1].NPI,
+      });
+    }
+
+    fs.writeFileSync(indexFilePath, JSON.stringify(indexData, null, 2));
+    console.log(`Appended data to JSON file ${filePath} successfully.`);
   } catch (err) {
     console.error("Error appending to JSON file:", err);
   }
 };
 
 const fetchAndIndexData = async (batchSize = 10000, maxDuration = 600000) => {
-  initializeJsonFile(); 
+  ensureDataDirExists();
+  initializeIndexFile();
+  validateAndRepairIndexFile();
 
-  const lastFetchedId = getLastFetchedNPI(); 
+  const lastFetchedId = getLastFetchedNPI();
 
   if (jobStatus.running) {
     console.warn("Job is already running. Skipping execution.");
@@ -55,7 +77,7 @@ const fetchAndIndexData = async (batchSize = 10000, maxDuration = 600000) => {
   }
 
   jobStatus.running = true;
-  const startTime = Date.now(); 
+  const startTime = Date.now();
   jobStatus.progress = "Starting data fetch...";
   console.log(jobStatus.progress);
 
@@ -64,10 +86,11 @@ const fetchAndIndexData = async (batchSize = 10000, maxDuration = 600000) => {
     console.log("Connected to the database.");
 
     let currentLastFetchedId = lastFetchedId;
+    let fileIndex = 0;
 
     while (Date.now() - startTime < maxDuration) {
       const query = `
-        SELECT TOP (${batchSize}) *
+        SELECT TOP (${batchSize}) NPI, HCP_first_name, HCP_last_name, Provider_Credential_Text, "Provider_Name_Prefix_Text", practice_address, practice_city, practice_st, practice_postal_code, mailing_address, mailing_city, mailing_st, mailing_postal_code, Taxonomy_Code, License_Number, Provider_License_State, Specialty_1, Specialty_2, Specialty_3, Country
         FROM hcp_search_20250106
         WHERE NPI > ${currentLastFetchedId}
         ORDER BY NPI ASC
@@ -81,7 +104,16 @@ const fetchAndIndexData = async (batchSize = 10000, maxDuration = 600000) => {
         break;
       }
 
-      appendToJsonFile(rows);
+      const indexContent = fs.readFileSync(indexFilePath, "utf8");
+      const indexData = JSON.parse(indexContent);
+      if (indexData.files.length > 0) {
+        const lastFile = indexData.files[indexData.files.length - 1];
+        if (lastFile.endNPI < rows[0].NPI) {
+          fileIndex = indexData.files.length;
+        }
+      }
+
+      appendToJsonFile(rows, fileIndex);
       console.log("Fetched rows:", rows.length);
 
       currentLastFetchedId = rows[rows.length - 1].NPI;
@@ -100,15 +132,42 @@ const fetchAndIndexData = async (batchSize = 10000, maxDuration = 600000) => {
 
 const getLastFetchedNPI = () => {
   try {
-    const fileContent = fs.readFileSync(dataFilePath, "utf8");
-    const jsonData = JSON.parse(fileContent);
+    const indexContent = fs.readFileSync(indexFilePath, "utf8");
+    const indexData = JSON.parse(indexContent);
 
-    const lastRecord = jsonData.data[jsonData.data.length - 1];
-    return lastRecord ? lastRecord.NPI : 0;
+    if (indexData.files.length > 0) {
+      const lastFile = indexData.files[indexData.files.length - 1];
+      return lastFile.endNPI;
+    }
+    return 0;
   } catch (err) {
     console.error("Error reading last fetched NPI:", err);
     return 0;
   }
 };
 
-module.exports = { fetchAndIndexData, jobStatus };
+const searchData = (npi) => {
+  try {
+    const indexContent = fs.readFileSync(indexFilePath, "utf8");
+    const indexData = JSON.parse(indexContent);
+
+    for (const fileInfo of indexData.files) {
+      if (npi >= fileInfo.startNPI && npi <= fileInfo.endNPI) {
+        const filePath = path.join(dataDir, `data_${fileInfo.index}.json`);
+        const fileContent = fs.readFileSync(filePath, "utf8");
+        const jsonData = JSON.parse(fileContent);
+
+        const result = jsonData.data.find((record) => record.NPI === npi);
+        if (result) {
+          return result;
+        }
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error("Error searching data:", err);
+    return null;
+  }
+};
+
+module.exports = { fetchAndIndexData, jobStatus, searchData };

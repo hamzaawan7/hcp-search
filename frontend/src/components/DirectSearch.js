@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./DirectSearch.css";
 
@@ -16,7 +16,13 @@ const DirectSearchPage = () => {
     licenseState: "",
     licenseNumber: "",
     specialty: "",
+    mailing_address: "",
+    mailing_postal_code: "",
+    practice_postal_code: "",
+    taxonomy_code: "",
     country: "",
+    provider_Credential_Text: "",
+    provider_Name_Prefix_Text: "",
   });
   const [showMultipleSearch, setShowMultipleSearch] = useState(false);
   const [multipleSearchTerm, setMultipleSearchTerm] = useState("");
@@ -30,13 +36,25 @@ const DirectSearchPage = () => {
     totalRecords: 0,
     pageSize: 10,
   });
+  const [exactMatchesPagination, setExactMatchesPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    pageSize: 10,
+  });
+  const [suggestedMatchesPagination, setSuggestedMatchesPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    pageSize: 10,
+  });
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [popupRowIndex, setPopupRowIndex] = useState(null);
   const [aiMatching, setAiMatching] = useState(false);
 
   const stateCities = {
-    AL: ["Birmingham", "Montgomery", "Mobile", "Huntsville", "Tuscaloosa", "Hoover", "Dothan", "Decatur", "Auburn", "Gadsden", "Florence", "Vestavia Hills", "Phenix City", "Prattville", "Alabaster", "Bessemer", "Enterprise", "Opelika", "Homewood", "Madison", "Anniston", "Selma", "Mountain Brook", "Pelham", "Trussville", "Helena", "Fairhope", "Oxford", "Cullman", "Foley"],
+    AL:  ["Birmingham", "Montgomery", "Mobile", "Huntsville", "Tuscaloosa", "Hoover", "Dothan", "Decatur", "Auburn", "Gadsden", "Florence", "Vestavia Hills", "Phenix City", "Prattville", "Alabaster", "Bessemer", "Enterprise", "Opelika", "Homewood", "Madison", "Anniston", "Selma", "Mountain Brook", "Pelham", "Trussville", "Helena", "Fairhope", "Oxford", "Cullman", "Foley"],
     AK: ["Anchorage", "Fairbanks", "Juneau", "Wasilla", "Sitka", "Ketchikan", "Kenai", "Kodiak", "Bethel", "Palmer"],
     AZ: ["Phoenix", "Tucson", "Mesa", "Chandler", "Scottsdale", "Glendale", "Gilbert", "Tempe", "Peoria", "Surprise"],
     AR: ["Little Rock", "Fort Smith", "Fayetteville", "Springdale", "Jonesboro", "North Little Rock", "Conway", "Rogers", "Pine Bluff", "Bentonville"],
@@ -77,8 +95,7 @@ const DirectSearchPage = () => {
     RI: ["Providence", "Cranston", "Warwick", "Pawtucket", "East Providence", "Woonsocket", "Coventry", "Cumberland", "North Providence", "South Kingstown"],
     SC: ["Columbia", "Charleston", "North Charleston", "Mount Pleasant", "Rock Hill", "Greenville", "Summerville", "Sumter", "Goose Creek", "Hilton Head Island"],
     SD: ["Sioux Falls", "Rapid City", "Aberdeen", "Brookings", "Watertown", "Mitchell", "Yankton", "Pierre", "Huron", "Vermillion"],
-    TN: ["Nashville", "Memphis", "Knoxville", "Chattanooga", "Clarksville", "Murfreesboro", "Franklin", "Jackson", "Johnson City", "Bartlett"],
-    TX: ["Houston", "Austin", "Dallas"],
+    TN: ["Nashville", "Memphis", "Knoxville", "Chattanooga", "Clarksville", "Murfreesboro", "Franklin", "Jackson", "Johnson City", "Bartlett"],    TX: ["Houston", "Austin", "Dallas"],
     UT: ["Salt Lake City", "West Valley City", "Provo", "West Jordan", "Orem", "Sandy", "Ogden", "St. George", "Layton", "South Jordan"],
     VT: ["Burlington", "South Burlington", "Rutland", "Essex Junction", "Barre", "Bennington", "Williston", "Montpelier", "Middlebury", "Brattleboro"],
     VA: ["Virginia Beach", "Norfolk", "Chesapeake", "Richmond", "Newport News", "Alexandria", "Hampton", "Roanoke", "Portsmouth", "Suffolk"],
@@ -813,6 +830,7 @@ const DirectSearchPage = () => {
     "Wound Care"
   ];
 
+
   const toggleSearchMode = () => {
     setShowMultipleSearch(!showMultipleSearch);
     clearForm();
@@ -833,7 +851,7 @@ const DirectSearchPage = () => {
         },
       });
       setResults(data.results || []);
-      setPagination(data.pagination || {});
+      setPagination(data.pagination || { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 10 });
       setExactMatches([]);
       setSearchPerformed(true);
     } catch (err) {
@@ -865,24 +883,13 @@ const DirectSearchPage = () => {
     setFormData({ ...formData, licenseState });
   };
 
-  const handleSearch = async (page = 1) => {
-    if (showMultipleSearch) {
-      await handleMultipleSearch(page);
-      return;
-    }
-
+  const handleSearch = async (page = 1, isExactMatch = false) => {
     const filteredParams = Object.fromEntries(
         Object.entries(formData).filter(([_, value]) => value.trim() !== "")
     );
 
-    // Add the selected country to the search parameters
     if (country && country !== "All") {
       filteredParams.country = country;
-    }
-
-    if (Object.keys(filteredParams).length === 0) {
-      alert("Please fill in at least one field before searching.");
-      return;
     }
 
     setLoading(true);
@@ -892,20 +899,21 @@ const DirectSearchPage = () => {
           : "http://localhost:5001/search/direct";
       const queryParams = {
         ...filteredParams,
-        page,
-        limit: pagination.pageSize,
+        page: isExactMatch ? exactMatchesPagination.currentPage : page,
+        limit: isExactMatch ? exactMatchesPagination.pageSize : pagination.pageSize,
       };
       const { data } = await axios.get(endpoint, { params: queryParams });
-      console.log(data); // Log the response to inspect the data structure
 
       if (aiMatching) {
         setExactMatches(data.exactMatches || []);
         setResults(data.suggestedMatches || []);
+        setExactMatchesPagination(data.exactPagination || { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 10 });
+        setSuggestedMatchesPagination(data.suggestedPagination || { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 10 });
       } else {
         setResults(data.results || []);
         setExactMatches([]);
+        setPagination(data.pagination || { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 10 });
       }
-      setPagination(data.pagination || { currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 10 });
     } catch (err) {
       console.error("Error fetching results:", err);
     } finally {
@@ -915,7 +923,7 @@ const DirectSearchPage = () => {
 
   const handleCountryChange = (selectedCountry) => {
     setCountry(selectedCountry);
-    handleSearch(1); // Trigger search when country is changed
+    handleSearch(1).catch((error) => console.error("Search failed:", error));
   };
 
   const handleView = async (record, index) => {
@@ -958,6 +966,18 @@ const DirectSearchPage = () => {
       totalRecords: 0,
       pageSize: 10,
     });
+    setExactMatchesPagination({
+      currentPage: 1,
+      totalPages: 1,
+      totalRecords: 0,
+      pageSize: 10,
+    });
+    setSuggestedMatchesPagination({
+      currentPage: 1,
+      totalPages: 1,
+      totalRecords: 0,
+      pageSize: 10,
+    });
   };
 
   return (
@@ -975,42 +995,36 @@ const DirectSearchPage = () => {
           >
             <img src="/images/planet-earth.png" alt="Global"/> All
           </button>
-
           <button
               className={`language-button ${country === "US" ? "active" : ""}`}
               onClick={() => handleCountryChange("US")}
           >
             <img src="/images/US.png" alt="US Flag"/> United States
           </button>
-
           <button
               className={`language-button ${country === "Italy" || country === "ITA" ? "active" : ""}`}
               onClick={() => handleCountryChange("Italy")}
           >
             <img src="/images/italy.png" alt="Italy Flag"/> Italy
           </button>
-
           <button
               className={`language-button ${country === "Portugal" || country === "PRT" ? "active" : ""}`}
               onClick={() => handleCountryChange("Portugal")}
           >
             <img src="/images/portugal.png" alt="Portugal Flag"/> Portugal
           </button>
-
           <button
               className={`language-button ${country === "France" || country === "FRA" ? "active" : ""}`}
               onClick={() => handleCountryChange("France")}
           >
             <img src="/images/france.png" alt="France Flag"/> France
           </button>
-
           <button
               className={`language-button ${country === "Belgium" || country === "BEL" ? "active" : ""}`}
               onClick={() => handleCountryChange("Belgium")}
           >
             <img src="/images/belgium.png" alt="Belgium Flag"/> Belgium
           </button>
-
           <button
               className={`language-button ${country === "Netherland" || country === "NED" ? "active" : ""}`}
               onClick={() => handleCountryChange("Netherland")}
@@ -1041,6 +1055,14 @@ const DirectSearchPage = () => {
                       placeholder="e.g. 1234567890, 0987654321"
                   />
                 </div>
+              </div>
+              <div className="actions">
+                <button onClick={() => handleMultipleSearch(1)}>
+                  <img src="/images/search.png" alt="Search"/> Search
+                </button>
+                <button onClick={clearForm}>
+                  <img src="/images/clear-format.png" alt="Clear"/> Clear
+                </button>
               </div>
             </div>
         ) : (
@@ -1156,119 +1178,136 @@ const DirectSearchPage = () => {
                   />
                 </div>
               </div>
+              <div className="actions">
+                <button onClick={() => handleSearch(1)}>
+                  <img src="/images/search.png" alt="Search"/> Search
+                </button>
+                <button onClick={clearForm}>
+                  <img src="/images/clear-format.png" alt="Clear"/> Clear
+                </button>
+              </div>
             </div>
         )}
-        <div className="actions">
-          <button onClick={() => handleSearch(1)}>
-            <img src="/images/search.png" alt="Search"/> Search
-          </button>
-          <button onClick={clearForm}>
-            <img src="/images/clear-format.png" alt="Clear"/> Clear
-          </button>
-        </div>
-        { exactMatches.length > 0 && (
+        {exactMatches.length > 0 && (
             <div className="suggestedmatches">
-            <h3>Exact Matches</h3>
-            <table className="results-table">
-              <thead>
-              <tr>
-                <th>HCP ID</th>
-                <th>First Name</th>
-                <th>Last Name</th>
-                <th>Address</th>
-                <th>Country</th>
-                <th>City</th>
-                <th>State</th>
-                <th>Specialty</th>
-                <th>Action</th>
-              </tr>
-              </thead>
-              <tbody>
-              {exactMatches.map((item, index) => (
-                  <React.Fragment key={item.NPI}>
-                    <tr>
-                      <td>{item.NPI}</td>
-                      <td>{item.HCP_first_name}</td>
-                      <td>{item.HCP_last_name}</td>
-                      <td>{item.practice_address}</td>
-                      <td>{item.Country}</td>
-                      <td>{item.practice_city}</td>
-                      <td>{item.practice_st}</td>
-                      <td>{item.Specialty_1}</td>
-                      <td>
-                        <button onClick={() => handleView(item, index)}>View</button>
-                      </td>
-                    </tr>
-                    {popupRowIndex === index && selectedRecord && (
-                        <tr className="details-popup">
-                          <td colSpan="14">
-                            <div className="popup-content">
-                              <h3>HCP ID: {selectedRecord.NPI}</h3>
-                              <p>
-                                <strong>Practice Address:</strong>{" "}
-                                {selectedRecord.practice_address || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Mailing Address:</strong>{" "}
-                                {selectedRecord.mailing_address || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Mailing City:</strong>{" "}
-                                {selectedRecord.mailing_city || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Mailing State:</strong>{" "}
-                                {selectedRecord.mailing_st || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Mailing Postal Code:</strong>{" "}
-                                {selectedRecord.mailing_postal_code || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Specialty 1:</strong>{" "}
-                                {selectedRecord.Specialty_2 || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Specialty 2:</strong>{" "}
-                                {selectedRecord.Specialty_2 || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Specialty 3:</strong>{" "}
-                                {selectedRecord.Specialty_3 || "N/A"}
-                              </p>
-                              <p>
-                                <strong>License Number:</strong>{" "}
-                                {selectedRecord.License_Number || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Provider_Credential_Text:</strong>{" "}
-                                {selectedRecord.Provider_Credential_Text || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Provider_Name_Prefix_Text:</strong>{" "}
-                                {selectedRecord.Provider_Name_Prefix_Text || "N/A"}
-                              </p>
-                              <p>
-                                <strong>practice_postal_code:</strong>{" "}
-                                {selectedRecord.practice_postal_code || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Taxonomy_Code:</strong>{" "}
-                                {selectedRecord.Taxonomy_Code || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Provider_License_State:</strong>{" "}
-                                {selectedRecord.Provider_License_State || "N/A"}
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                    )}
-                  </React.Fragment>
-              ))}
-              </tbody>
-            </table>
-          </div>
+              <h3>Exact Matches</h3>
+              <table className="results-table">
+                <thead>
+                <tr>
+                  <th>HCP ID</th>
+                  <th>First Name</th>
+                  <th>Last Name</th>
+                  <th>Address</th>
+                  <th>Country</th>
+                  <th>City</th>
+                  <th>State</th>
+                  <th>Specialty</th>
+                  <th>Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                {exactMatches.map((item, index) => (
+                    <React.Fragment key={item.NPI}>
+                      <tr>
+                        <td>{item.NPI}</td>
+                        <td>{item.HCP_first_name}</td>
+                        <td>{item.HCP_last_name}</td>
+                        <td>{item.practice_address}</td>
+                        <td>{item.Country}</td>
+                        <td>{item.practice_city}</td>
+                        <td>{item.practice_st}</td>
+                        <td>{item.Specialty_1}</td>
+                        <td>
+                          <button onClick={() => handleView(item, index)}>View</button>
+                        </td>
+                      </tr>
+                      {popupRowIndex === index && selectedRecord && (
+                          <tr className="details-popup">
+                            <td colSpan="14">
+                              <div className="popup-content">
+                                <h3>HCP ID: {selectedRecord.NPI}</h3>
+                                <p>
+                                  <strong>Practice Address:</strong>{" "}
+                                  {selectedRecord.practice_address || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Mailing Address:</strong>{" "}
+                                  {selectedRecord.mailing_address || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Mailing City:</strong>{" "}
+                                  {selectedRecord.mailing_city || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Mailing State:</strong>{" "}
+                                  {selectedRecord.mailing_st || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Mailing Postal Code:</strong>{" "}
+                                  {selectedRecord.mailing_postal_code || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Specialty 1:</strong>{" "}
+                                  {selectedRecord.Specialty_2 || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Specialty 2:</strong>{" "}
+                                  {selectedRecord.Specialty_2 || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Specialty 3:</strong>{" "}
+                                  {selectedRecord.Specialty_3 || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>License Number:</strong>{" "}
+                                  {selectedRecord.License_Number || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Provider_Credential_Text:</strong>{" "}
+                                  {selectedRecord.Provider_Credential_Text || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Provider_Name_Prefix_Text:</strong>{" "}
+                                  {selectedRecord.Provider_Name_Prefix_Text || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>practice_postal_code:</strong>{" "}
+                                  {selectedRecord.practice_postal_code || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Taxonomy_Code:</strong>{" "}
+                                  {selectedRecord.Taxonomy_Code || "N/A"}
+                                </p>
+                                <p>
+                                  <strong>Provider_License_State:</strong>{" "}
+                                  {selectedRecord.Provider_License_State || "N/A"}
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                      )}
+                    </React.Fragment>
+                ))}
+                </tbody>
+              </table>
+              <div className="pagination-controls">
+                <button
+                    disabled={exactMatchesPagination.currentPage === 1}
+                    onClick={() => handleSearch(exactMatchesPagination.currentPage - 1, true)}
+                >
+                  Previous
+                </button>
+                <span>
+        Page {exactMatchesPagination.currentPage} of {exactMatchesPagination.totalPages}
+      </span>
+                <button
+                    disabled={exactMatchesPagination.currentPage === exactMatchesPagination.totalPages}
+                    onClick={() => handleSearch(exactMatchesPagination.currentPage + 1, true)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
         )}
         {results.length > 0 && (
             <div className="suggestedmatches">
@@ -1379,17 +1418,17 @@ const DirectSearchPage = () => {
         {results.length > 0 && (
             <div className="pagination-controls">
               <button
-                  disabled={pagination.currentPage === 1}
-                  onClick={() => handleSearch(pagination.currentPage - 1)}
+                  disabled={suggestedMatchesPagination.currentPage === 1}
+                  onClick={() => handleSearch(suggestedMatchesPagination.currentPage - 1)}
               >
                 Previous
               </button>
               <span>
-            Page {pagination.currentPage} of {pagination.totalPages}
+            Page {suggestedMatchesPagination.currentPage} of {suggestedMatchesPagination.totalPages}
           </span>
               <button
-                  disabled={pagination.currentPage === pagination.totalPages}
-                  onClick={() => handleSearch(pagination.currentPage + 1)}
+                  disabled={suggestedMatchesPagination.currentPage === suggestedMatchesPagination.totalPages}
+                  onClick={() => handleSearch(suggestedMatchesPagination.currentPage + 1)}
               >
                 Next
               </button>
