@@ -68,22 +68,22 @@ const Search = () => {
       const newUrl = `?type=${searchType}&term=${searchTerm}&country=${country}`;
       navigate(newUrl, { replace: true });
       if (searchType === "smart") {
-        const exactResponse = await axios.get("http://localhost:5000/search/smart/exact", { params });
+        const exactResponse = await axios.get("http://3.144.232.139:5000/search/smart/exact", { params });
         setExact(exactResponse.data.results || []);
         setExactPagination(exactResponse.data.pagination || {});
-        const suggestedResponse = await axios.get("http://localhost:5000/search/smart/suggested", { params });
+        const suggestedResponse = await axios.get("http://3.144.232.139:5000/search/smart/suggested", { params });
         setSuggested(suggestedResponse.data.results || []);
         setSuggestedPagination(suggestedResponse.data.pagination || {});
         setResults([]);
         setPagination({ currentPage: 1, totalPages: 1, totalRecords: 0, pageSize: 10 });
       } else if (searchType === "direct") {
-        const response = await axios.get("http://localhost:5000/search/direct", { params });
+        const response = await axios.get("http://3.144.232.139:5000/search/direct", { params });
         setResults(response.data.results || []);
         setPagination(response.data.pagination || {});
         setExact([]);
         setSuggested([]);
       } else if (searchType === "multiple") {
-        const response = await axios.get("http://localhost:5000/search/multiple", { params });
+        const response = await axios.get("http://3.144.232.139:5000/search/multiple", { params });
         setResults(response.data.results || []);
         setPagination(response.data.pagination || {});
         setExact([]);
