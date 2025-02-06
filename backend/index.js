@@ -67,7 +67,7 @@ cron.schedule("*/2 * * * *", async () => {
     console.error("Error during initial data fetch:", err);
   }
 })();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
