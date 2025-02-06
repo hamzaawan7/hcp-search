@@ -843,7 +843,7 @@ const DirectSearchPage = () => {
     }
     setLoading(true);
     try {
-      const { data } = await axios.get("http://localhost:5001/search/multiple", {
+      const { data } = await axios.get("http://3.144.232.139/search/multiple", {
         params: {
           term: multipleSearchTerm,
           page,
@@ -895,8 +895,8 @@ const DirectSearchPage = () => {
     setLoading(true);
     try {
       const endpoint = aiMatching
-          ? "http://localhost:5001/search/smart/suggested"
-          : "http://localhost:5001/search/direct";
+          ? "http://3.144.232.139/search/smart/suggested"
+          : "http://3.144.232.139/search/direct";
       const queryParams = {
         ...filteredParams,
         page: isExactMatch ? exactMatchesPagination.currentPage : page,
@@ -934,7 +934,7 @@ const DirectSearchPage = () => {
         return;
       }
       const { data } = await axios.get(
-          `http://localhost:5001/search/direct/view/${record.NPI}`
+          `http://3.144.232.139/search/direct/view/${record.NPI}`
       );
       setSelectedRecord(data.record);
       setPopupRowIndex(index);
